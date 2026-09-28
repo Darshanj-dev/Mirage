@@ -1,9 +1,13 @@
 # MIRAGE progress
 
 ## Current milestone
-M4 Protect and restore (code done, waiting for the manual gate on ChatGPT)
+M5 Complete v1
 
 ## Done
+- M4 Protect and restore (MVP, tag v0.1, 2026-09-28): verified on real ChatGPT — preview panel,
+  masked send (ChatGPT saw only «PAN_1»/«PHONE_1», checked with MIRAGE off), reply restored with
+  dotted underline, Email-card placeholders show the value on hover, API key blocked and
+  "Remove secret and send" sent «SECRET_REMOVED».
 - M0 Setup: WXT 0.21 React project in the repo root, TypeScript strict, Vitest 5 with WXT plugin,
   host permissions for chatgpt.com and gemini.google.com only, docs/ and CLAUDE.md in repo.
   Gate passed: `npm run dev` opens Chrome with MIRAGE loaded.
@@ -22,16 +26,12 @@ M4 Protect and restore (code done, waiting for the manual gate on ChatGPT)
   Gate passed on real ChatGPT 2026-09-28: PAN -> blue badge 1 + «PAN_1»; password -> red badge.
 
 ## In progress
-- M4: send guard at document_start (window capture: Enter, send-button click, form submit),
-  block panel (Remove secret and send / Edit prompt), preview panel (Send protected / Cancel /
-  Send without hiding + confirm), error panel (Try again), masked write via execCommand
-  insertText per span + verify before send, prompt note asking the AI to keep «» placeholders,
-  reply restore by rewriting text-node data only (dotted underline via CSS highlight, amber for
-  changed/expired), RENAME_CHAT for new chats, COUNT for hidden/blocked/restoreFailures/allowOnce.
+- Nothing.
 
 ## Next step
-- Check the M4 gate 3 times in a row on ChatGPT (Priya prompt hidden + restored, fake API key blocked).
-- Then tag v0.1 and record a quick screen video; then M5 (Gemini, popup, Quick mode offer, etc).
+- Confirm F5 on a protected chat keeps restored values (fixed in 71c1aea, not yet seen after reload).
+- M5 session 1: Gemini selectors (take them from gemini.google.com via DevTools, like ChatGPT),
+  then the popup (S7): on/off, status, weekly counts, Quick mode, Safe words, Always mask, Clear.
 
 ## Decisions and gotchas
 - Project lives in the repo root (not a mirage/ subfolder), next to the original .docx specs.
