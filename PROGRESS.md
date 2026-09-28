@@ -1,7 +1,7 @@
 # MIRAGE progress
 
 ## Current milestone
-M2 Vault and service worker
+M3 On the page (waiting for ChatGPT selectors from Inspect)
 
 ## Done
 - M0 Setup: WXT 0.21 React project in the repo root, TypeScript strict, Vitest 5 with WXT plugin,
@@ -12,12 +12,19 @@ M2 Vault and service worker
   terms; tokenizer (`«TYPE_n»`, same normalized value -> same token); 50-prompt test set.
   Gate passed: 243 tests, every rule has 5+ matches and 5+ look-alikes, all 50 prompts exact.
 
+- M2 Vault and service worker: lib/vault.ts (AES-GCM 256, non-extractable key in IndexedDB,
+  fresh IV per write, storage key as AAD, per-key write lock), lib/messages.ts (typed requests,
+  validation, never-throwing sendMessage), lib/settings.ts (settings/stats/meta with defaults),
+  lib/handlers.ts, entrypoints/background.ts (sender check, hourly sweep via chrome.alarms),
+  lib/nameCheck.ts stub. Gate passed: 276 tests, incl. tokenize->restore, wrong-key record
+  fails to decrypt, old records swept, nothing stored as plain text.
+
 ## In progress
 - Nothing.
 
 ## Next step
-- M2: lib/vault.ts (AES-GCM, key in IndexedDB), lib/messages.ts, lib/settings.ts,
-  entrypoints/background.ts handlers, hourly 24-hour sweep. fake-indexeddb is pre-approved for tests.
+- M3: needs the ChatGPT prompt box and send button HTML (Inspect) before writing lib/sites.ts.
+  Then mount React UI in Shadow DOM, run detect() 300 ms after typing, shield badge (S1) + count.
 
 ## Decisions and gotchas
 - Project lives in the repo root (not a mirage/ subfolder), next to the original .docx specs.
@@ -36,5 +43,11 @@ M2 Vault and service worker
 - UPI skips npm/git-style handles (wxt@latest, origin@main).
 - Placeholder labels: NAME and CUSTOM (Always mask) both become «PERSON_n», so tokenizer counters are
   keyed by label rather than by EntityType (small deviation from schema.md VaultRecord.counters).
+- Vault handlers live in lib/handlers.ts but are imported only by entrypoints/background.ts.
+- The 24-hour sweep counts a send (TOKENIZE) as use; restoring a reply does not extend it.
+- An unreadable vault record (e.g. key lost) is replaced on the next send; old replies then show
+  placeholders. Nothing is ever sent raw because of it.
+- Added message RENAME_CHAT (temp id -> real chat id), documented in docs/schema.md.
+- fake-indexeddb added as a dev dependency (pre-approved in the Implementation Plan).
 - Names are not found by rules (by design): test prompts list them under "names" as a known limit.
 - Popup text is a hard-coded placeholder until M5 moves every string to _locales/en/messages.json.

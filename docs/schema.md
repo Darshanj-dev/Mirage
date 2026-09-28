@@ -142,6 +142,9 @@ Defaults are written on install; any missing field is filled from defaults on re
 | CLEAR_VAULT | popup | — | cleared: number of pairs |
 | GET_STATS | popup | — | Stats |
 | COUNT | content | Partial Counts delta (numbers only, never content) | ok |
+| RENAME_CHAT | content | site, fromChatId (temporary id of a new chat), toChatId (id from the URL) | renamed: boolean |
+
+TOKENIZE rejects any secret type: secrets are blocked, never stored. COUNT keeps only numeric fields for known types.
 
 Every response is `{ ok: true, ... }` or `{ ok: false, error: string }`; the content script treats `ok: false` or no response as an error and blocks the send.
 
