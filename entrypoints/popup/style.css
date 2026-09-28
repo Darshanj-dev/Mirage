@@ -1,0 +1,15 @@
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+
+.popup {
+  width: 320px;
+  padding: 16px;
+}
+
+.popup h1 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+}
