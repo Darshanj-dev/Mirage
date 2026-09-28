@@ -70,10 +70,16 @@ describe('vault records', () => {
       { type: 'PHONE', value: '98450 12345' },
     ]);
     expect(tokens).toEqual(['«PAN_1»', '«PHONE_1»']);
-    expect(await restore('chatgpt', 'chat-1', ['«PAN_1»', '«PHONE_1»', '«EMAIL_1»'])).toEqual({
+    expect((await restore('chatgpt', 'chat-1', ['«PAN_1»', '«PHONE_1»', '«EMAIL_1»'])).values).toEqual({
       '«PAN_1»': 'ABCDE1234F',
       '«PHONE_1»': '98450 12345',
     });
+  });
+
+  it('says whether the chat still has saved values', async () => {
+    await tokenize('chatgpt', 'chat-1', [{ type: 'PAN', value: 'ABCDE1234F' }]);
+    expect((await restore('chatgpt', 'chat-1', ['«PAN_9»'])).found).toBe(true);
+    expect((await restore('chatgpt', 'never-used', ['«PAN_1»'])).found).toBe(false);
   });
 
   it('never stores a value as plain text', async () => {
@@ -97,8 +103,8 @@ describe('vault records', () => {
   it('keeps chats and sites separate', async () => {
     await tokenize('chatgpt', 'chat-1', [{ type: 'PAN', value: 'ABCDE1234F' }]);
     expect(await tokenize('chatgpt', 'chat-2', [{ type: 'PAN', value: 'BNZPM2501K' }])).toEqual(['«PAN_1»']);
-    expect(await restore('gemini', 'chat-1', ['«PAN_1»'])).toEqual({});
-    expect(await restore('chatgpt', 'chat-2', ['«PAN_1»'])).toEqual({ '«PAN_1»': 'BNZPM2501K' });
+    expect((await restore('gemini', 'chat-1', ['«PAN_1»'])).values).toEqual({});
+    expect((await restore('chatgpt', 'chat-2', ['«PAN_1»'])).values).toEqual({ '«PAN_1»': 'BNZPM2501K' });
   });
 
   it('handles concurrent sends to one chat without losing entries', async () => {
@@ -117,13 +123,13 @@ describe('vault records', () => {
     const { [key1]: blob } = await browser.storage.local.get(key1);
     await browser.storage.local.set({ [vaultStorageKey('chatgpt', 'chat-2')]: blob });
     expect(await loadRecord('chatgpt', 'chat-2')).toBeNull();
-    expect(await restore('chatgpt', 'chat-2', ['«PAN_1»'])).toEqual({});
+    expect((await restore('chatgpt', 'chat-2', ['«PAN_1»'])).values).toEqual({});
   });
 
   it('renames a new chat from its temporary id', async () => {
     await tokenize('chatgpt', 'tmp-1', [{ type: 'PAN', value: 'ABCDE1234F' }]);
     expect(await renameChat('chatgpt', 'tmp-1', 'real-id')).toBe(true);
-    expect(await restore('chatgpt', 'real-id', ['«PAN_1»'])).toEqual({ '«PAN_1»': 'ABCDE1234F' });
+    expect((await restore('chatgpt', 'real-id', ['«PAN_1»'])).values).toEqual({ '«PAN_1»': 'ABCDE1234F' });
     expect(await loadRecord('chatgpt', 'tmp-1')).toBeNull();
     expect(await renameChat('chatgpt', 'missing', 'x')).toBe(false);
   });
@@ -135,7 +141,7 @@ describe('vault records', () => {
     ]);
     await tokenize('gemini', 'b', [{ type: 'EMAIL', value: 'a.b@example.com' }]);
     expect(await clearVault()).toBe(3);
-    expect(await restore('chatgpt', 'a', ['«PAN_1»'])).toEqual({});
+    expect((await restore('chatgpt', 'a', ['«PAN_1»'])).values).toEqual({});
     expect(Object.keys(await browser.storage.local.get(null)).filter((k) => k.startsWith('vault'))).toEqual([]);
   });
 });
@@ -147,8 +153,8 @@ describe('vault sweep', () => {
     await tokenize('chatgpt', 'fresh', [{ type: 'PAN', value: 'BNZPM2501K' }], now - 60_000);
 
     expect(await sweepVault(now)).toBe(1);
-    expect(await restore('chatgpt', 'old', ['«PAN_1»'])).toEqual({});
-    expect(await restore('chatgpt', 'fresh', ['«PAN_1»'])).toEqual({ '«PAN_1»': 'BNZPM2501K' });
+    expect((await restore('chatgpt', 'old', ['«PAN_1»'])).values).toEqual({});
+    expect((await restore('chatgpt', 'fresh', ['«PAN_1»'])).values).toEqual({ '«PAN_1»': 'BNZPM2501K' });
   });
 
   it('counts a new send as use, so an active chat is kept', async () => {

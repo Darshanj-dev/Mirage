@@ -47,6 +47,14 @@ export function readPrompt(root: HTMLElement): PromptText {
   return {
     text: text.replace(/\n$/, ''),
     rangeFor(start, end) {
+      // An empty range at the very end: after the last character (for appending text).
+      const last = segments.at(-1);
+      if (start === end && last && start === last.start + last.node.length) {
+        const range = document.createRange();
+        range.setStart(last.node, last.node.length);
+        range.collapse(true);
+        return range;
+      }
       const from = segments.find((s) => start >= s.start && start < s.start + s.node.length);
       const to = [...segments].reverse().find((s) => end > s.start && end <= s.start + s.node.length);
       if (!from || !to) return null;

@@ -198,10 +198,17 @@ export async function previewTokens(site: Site, chatId: string, requests: readon
   return assignTokens(record ?? emptyTokenState(), requests).tokens;
 }
 
-/** Real values for the placeholders found in a reply; unknown ones are left out. */
-export async function restore(site: Site, chatId: string, tokens: readonly string[]): Promise<Record<string, string>> {
+/**
+ * Real values for the placeholders found in a reply; unknown ones are left out.
+ * `found` is false when the chat has no saved values at all (e.g. cleared after 24 hours).
+ */
+export async function restore(
+  site: Site,
+  chatId: string,
+  tokens: readonly string[],
+): Promise<{ values: Record<string, string>; found: boolean }> {
   const record = await loadRecord(site, chatId);
-  return record ? lookupTokens(record, tokens) : {};
+  return record ? { values: lookupTokens(record, tokens), found: true } : { values: {}, found: false };
 }
 
 /** Moves a new chat's record from its temporary id to the real id once the URL has one. */

@@ -10,6 +10,7 @@ import { currentChatId } from '@/lib/page/chatId';
 import { clearHighlights, setHighlights } from '@/lib/page/highlights';
 import { readPrompt } from '@/lib/page/promptText';
 import { findComposer, findPromptBox, type SiteConfig } from '@/lib/sites';
+import { useRangeHover } from './useRangeHover';
 
 export type BadgeStatus = 'off' | 'watching' | 'found' | 'secret' | 'error' | 'pageChanged';
 
@@ -19,13 +20,10 @@ export interface ScanResult {
   tokens: (string | null)[]; // placeholder per finding; null for secrets or while loading
 }
 
-export interface HoverTarget {
-  index: number;
-  rect: DOMRect;
-}
-
-interface PageSettings extends DetectSettings {
+export interface PageSettings extends DetectSettings {
   enabled: boolean;
+  quickMode: boolean;
+  protectedSendCount: number;
 }
 
 const SCAN_DELAY_MS = 300;
@@ -44,25 +42,31 @@ export function usePromptWatcher(site: SiteConfig) {
   const [scan, setScan] = useState<ScanResult>(EMPTY_SCAN);
   const [detectError, setDetectError] = useState(false);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
-  const [hover, setHover] = useState<HoverTarget | null>(null);
 
   const settingsRef = useRef(settings);
   const boxRef = useRef(box);
-  const scanRef = useRef(scan);
   const scanId = useRef(0);
   settingsRef.current = settings;
   boxRef.current = box;
-  scanRef.current = scan;
 
   // ---- settings: load once, reload when the popup or a page shortcut changes them
-  const loadSettings = useCallback(async () => {
+  const loadSettings = useCallback(async (): Promise<PageSettings | null> => {
     const res = await sendMessage({ type: 'GET_SETTINGS' });
-    if (res.ok) {
-      setSettings({ enabled: res.settings.enabled, safeWords: res.settings.safeWords, alwaysMask: res.alwaysMask });
-      setSettingsError(false);
-    } else {
+    if (!res.ok) {
       setSettingsError(true);
+      return null;
     }
+    const next: PageSettings = {
+      enabled: res.settings.enabled,
+      quickMode: res.settings.quickMode,
+      protectedSendCount: res.settings.protectedSendCount,
+      safeWords: res.settings.safeWords,
+      alwaysMask: res.alwaysMask,
+    };
+    settingsRef.current = next;
+    setSettings(next);
+    setSettingsError(false);
+    return next;
   }, []);
 
   useEffect(() => {
@@ -166,30 +170,7 @@ export function usePromptWatcher(site: SiteConfig) {
 
   useEffect(() => () => clearHighlights(), []);
 
-  // ---- hover over an underlined detail
-  useEffect(() => {
-    let frame = 0;
-    const onMove = (e: MouseEvent) => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const { ranges } = scanRef.current;
-        for (let index = 0; index < ranges.length; index++) {
-          for (const rect of ranges[index]?.getClientRects() ?? []) {
-            if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top - 2 && e.clientY <= rect.bottom + 4) {
-              setHover((prev) => (prev?.index === index && sameRect(prev.rect, rect) ? prev : { index, rect }));
-              return;
-            }
-          }
-        }
-        setHover((prev) => (prev ? null : prev));
-      });
-    };
-    document.addEventListener('mousemove', onMove, { passive: true });
-    return () => {
-      cancelAnimationFrame(frame);
-      document.removeEventListener('mousemove', onMove);
-    };
-  }, []);
+  const hover = useRangeHover(scan.ranges);
 
   // ---- status for the badge
   let status: BadgeStatus;
@@ -205,5 +186,5 @@ export function usePromptWatcher(site: SiteConfig) {
     await loadSettings();
   }, [loadSettings]);
 
-  return { status, scan, anchor, hover, turnOn, retry: scanNow };
+  return { status, scan, anchor, hover, settings, settingsRef, loadSettings, turnOn, retry: scanNow };
 }

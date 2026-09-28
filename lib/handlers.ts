@@ -55,7 +55,7 @@ export async function handleMessage(msg: unknown, now: number = Date.now()): Pro
       case 'PREVIEW':
         return ok<'PREVIEW'>({ tokens: await previewTokens(msg.site, msg.chatId, msg.findings) });
       case 'RESTORE':
-        return ok<'RESTORE'>({ values: await restore(msg.site, msg.chatId, msg.tokens) });
+        return ok<'RESTORE'>(await restore(msg.site, msg.chatId, msg.tokens));
       case 'RENAME_CHAT':
         return ok<'RENAME_CHAT'>({ renamed: await renameChat(msg.site, msg.fromChatId, msg.toChatId, now) });
       case 'GET_SETTINGS':

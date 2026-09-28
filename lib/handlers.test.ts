@@ -31,7 +31,7 @@ describe('service worker messages', () => {
     });
     expect(tok).toEqual({ ok: true, tokens: ['«PAN_1»'] });
     const res = await handleMessage({ type: 'RESTORE', site: 'chatgpt', chatId: 'c', tokens: ['«PAN_1»', '«PAN_2»'] });
-    expect(res).toEqual({ ok: true, values: { '«PAN_1»': 'ABCDE1234F' } });
+    expect(res).toEqual({ ok: true, values: { '«PAN_1»': 'ABCDE1234F' }, found: true });
   });
 
   it('PREVIEW shows the next placeholders without saving', async () => {
@@ -49,6 +49,7 @@ describe('service worker messages', () => {
     expect(await handleMessage({ type: 'RESTORE', site: 'chatgpt', chatId: 'c', tokens: ['«PAN_2»'] })).toEqual({
       ok: true,
       values: {},
+      found: true,
     });
     expect(JSON.stringify(await browser.storage.local.get(null))).not.toContain('BNZPM2501K');
   });

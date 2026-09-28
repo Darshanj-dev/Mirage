@@ -20,8 +20,12 @@ export const secretName = (type: SecretType): string => t(`secret_${type}`);
 export const typeName = (type: FindingType): string =>
   type === 'CARD' || type === 'API_KEY' || type === 'PASSWORD' || type === 'OTP' ? secretName(type) : t(`type_${type}`);
 
-/** Shows a secret without revealing it: first 3 and last 4 characters, e.g. sk-•••••7f2a. */
+/**
+ * Shows a value without revealing it. Long keys keep their first 3 and last 4 characters
+ * (sk-•••••7f2a) so the user can tell which one it is; anything shorter than 16 characters,
+ * like a password or PAN, is hidden completely, since 7 known characters would give it away.
+ */
 export function obscure(value: string): string {
-  if (value.length <= 8) return '•'.repeat(Math.max(value.length, 4));
+  if (value.length < 16) return '•'.repeat(8);
   return `${value.slice(0, 3)}•••••${value.slice(-4)}`;
 }

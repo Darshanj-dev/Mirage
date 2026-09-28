@@ -51,8 +51,9 @@ describe('obscure', () => {
     expect(obscure('sk-proj-Xq7Lm2Rt9Vb4Nc8Kd1Pf6Hs3Wz5J7f2a')).toBe('sk-•••••7f2a');
   });
 
-  it('hides short values completely', () => {
-    expect(obscure('7351')).toBe('••••');
-    expect(obscure('tiger26')).toBe('•••••••');
+  it('hides short values completely, without revealing their length', () => {
+    expect(obscure('7351')).toBe('••••••••');
+    expect(obscure('tiger2026')).toBe('••••••••');
+    expect(obscure('Chai&Biscuit7')).toBe('••••••••');
   });
 });

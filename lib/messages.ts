@@ -82,7 +82,7 @@ export interface SettingsResult {
 export interface ResultMap {
   TOKENIZE: { tokens: string[] };
   PREVIEW: { tokens: string[] };
-  RESTORE: { values: Record<string, string> };
+  RESTORE: { values: Record<string, string>; found: boolean };
   RENAME_CHAT: { renamed: boolean };
   GET_SETTINGS: SettingsResult;
   SET_SETTINGS: SettingsResult;

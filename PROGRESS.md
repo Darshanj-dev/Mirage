@@ -1,7 +1,7 @@
 # MIRAGE progress
 
 ## Current milestone
-M3 On the page (waiting for ChatGPT selectors from Inspect)
+M4 Protect and restore (code done, waiting for the manual gate on ChatGPT)
 
 ## Done
 - M0 Setup: WXT 0.21 React project in the repo root, TypeScript strict, Vitest 5 with WXT plugin,
@@ -18,17 +18,20 @@ M3 On the page (waiting for ChatGPT selectors from Inspect)
   lib/handlers.ts, entrypoints/background.ts (sender check, hourly sweep via chrome.alarms),
   lib/nameCheck.ts stub. Gate passed: 276 tests, incl. tokenize->restore, wrong-key record
   fails to decrypt, old records swept, nothing stored as plain text.
+- M3 On the page: badge, live highlights (CSS Custom Highlight API), hover placeholders.
+  Gate passed on real ChatGPT 2026-09-28: PAN -> blue badge 1 + «PAN_1»; password -> red badge.
 
 ## In progress
-- M3 On the page: code done, waiting for the manual gate on real ChatGPT.
-  lib/sites.ts (ChatGPT: #prompt-textarea ProseMirror, #composer-submit-button), React UI in a
-  Shadow DOM (ShieldBadge, Tooltip, MirageApp, usePromptWatcher), scan 300 ms after the box
-  changes (MutationObserver), underlines via the CSS Custom Highlight API (no editor DOM changes),
-  hover tooltips, PREVIEW message for exact placeholders, all strings in public/_locales/en.
+- M4: send guard at document_start (window capture: Enter, send-button click, form submit),
+  block panel (Remove secret and send / Edit prompt), preview panel (Send protected / Cancel /
+  Send without hiding + confirm), error panel (Try again), masked write via execCommand
+  insertText per span + verify before send, prompt note asking the AI to keep «» placeholders,
+  reply restore by rewriting text-node data only (dotted underline via CSS highlight, amber for
+  changed/expired), RENAME_CHAT for new chats, COUNT for hidden/blocked/restoreFailures/allowOnce.
 
 ## Next step
-- Check the M3 gate: "My PAN is ABCDE1234F" -> blue badge with 1, hover shows «PAN_1».
-- Then M4: intercept Enter/send, block panel, preview panel, masked send, restore replies.
+- Check the M4 gate 3 times in a row on ChatGPT (Priya prompt hidden + restored, fake API key blocked).
+- Then tag v0.1 and record a quick screen video; then M5 (Gemini, popup, Quick mode offer, etc).
 
 ## Decisions and gotchas
 - Project lives in the repo root (not a mirage/ subfolder), next to the original .docx specs.
@@ -57,5 +60,11 @@ M3 On the page (waiting for ChatGPT selectors from Inspect)
 - The badge sits just above the composer's top-right corner so it never covers ChatGPT's buttons.
 - Plural strings use a `_one` key (badge_found_one etc.) so text says "1 item", not "1 items".
 - Page-changed state: the prompt box missing for 8 s shows a grey ! badge + error_pageChanged.
+- Short secrets (<16 chars) are shown as 8 dots; long keys as first 3 + last 4 (sk-•••••7f2a).
+- Preview pill hover names the kind of detail, not the value (Content rule 7 beats App Flow).
+- The token-keeping note is appended to every protected prompt and is visible in the preview
+  (resolves PRD open question 3): "(Keep the «» placeholders exactly as written.)"
+- Restored values are written into the page's text nodes (no new elements), so a site re-render
+  just re-triggers the restore. Real values then exist in the page DOM (on screen only).
 - Names are not found by rules (by design): test prompts list them under "names" as a known limit.
 - Popup text is a hard-coded placeholder until M5 moves every string to _locales/en/messages.json.

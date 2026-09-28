@@ -104,3 +104,157 @@
 .mirage-tooltip__list li.is-secret {
   border-left-color: var(--mirage-red);
 }
+
+/* ---- panels (S3 preview, S4 block, error, confirm) */
+
+.mirage-panel {
+  position: fixed;
+  z-index: 2147483647;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgb(0 0 0 / 0.08);
+  border-top: 3px solid var(--mirage-grey);
+  background: var(--mirage-paper);
+  color: var(--mirage-ink);
+  font: 400 14px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.28);
+  animation: mirage-slide-up 140ms ease-out;
+}
+
+@keyframes mirage-slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.mirage-panel--protect { border-top-color: var(--mirage-blue); }
+.mirage-panel--block { border-top-color: var(--mirage-red); }
+
+.mirage-panel__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.mirage-panel__body {
+  overflow: auto;
+  min-height: 0;
+}
+
+.mirage-panel__body:empty { display: none; }
+
+.mirage-prompt {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgb(0 0 0 / 0.04);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.mirage-pill {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgb(37 99 235 / 0.12);
+  color: var(--mirage-blue);
+  font-weight: 600;
+}
+
+.mirage-pill--secret {
+  background: rgb(220 38 38 / 0.12);
+  color: var(--mirage-red);
+}
+
+.mirage-panel__footer {
+  margin: 0;
+  color: #4b5563;
+  font-size: 13px;
+}
+
+.mirage-panel__offer {
+  display: block;
+  margin-top: 4px;
+}
+
+.mirage-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mirage-spacer { flex: 1; }
+
+.mirage-btn {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid rgb(0 0 0 / 0.15);
+  background: transparent;
+  color: inherit;
+  font: 500 14px/1.2 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  cursor: pointer;
+}
+
+.mirage-btn:hover { background: rgb(0 0 0 / 0.05); }
+
+.mirage-btn--primary {
+  border-color: var(--mirage-blue);
+  background: var(--mirage-blue);
+  color: #fff;
+}
+
+.mirage-btn--primary:hover { background: #1d4ed8; }
+
+.mirage-btn--block {
+  border-color: var(--mirage-red);
+  background: var(--mirage-red);
+}
+
+.mirage-btn--block:hover { background: #b91c1c; }
+
+.mirage-btn:focus-visible,
+.mirage-link:focus-visible {
+  outline: 2px solid var(--mirage-blue);
+  outline-offset: 2px;
+}
+
+.mirage-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #4b5563;
+  font: 400 13px/1.2 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ---- Quick mode chip */
+
+.mirage-chip {
+  position: fixed;
+  z-index: 2147483646;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--mirage-blue);
+  color: #fff;
+  font: 500 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+  .mirage-panel {
+    --mirage-paper: #1f2023;
+    --mirage-ink: #f3f4f6;
+    border-color: rgb(255 255 255 / 0.1);
+  }
+  .mirage-prompt { background: rgb(255 255 255 / 0.06); }
+  .mirage-pill { background: rgb(96 165 250 / 0.18); color: #93c5fd; }
+  .mirage-pill--secret { background: rgb(248 113 113 / 0.18); color: #fca5a5; }
+  .mirage-panel__footer, .mirage-link { color: #9ca3af; }
+  .mirage-btn { border-color: rgb(255 255 255 / 0.2); }
+  .mirage-btn:hover { background: rgb(255 255 255 / 0.08); }
+}

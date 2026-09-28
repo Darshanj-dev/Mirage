@@ -1,10 +1,15 @@
-// The chat id for vault records: from the URL, or a temporary id for a new, unsaved chat
-// (renamed to the real id once the URL has one; docs/schema.md, Key naming).
+// The chat id for vault records: from the URL, or a temporary id for a new, unsaved chat.
+// Once the site gives the new chat a real URL, the vault record is renamed to it
+// (docs/schema.md, Key naming).
 
+import { sendMessage } from '../messages';
 import type { SiteConfig } from '../sites';
 
 let tempId: string | null = null;
+let tempUsed = false; // true once a send stored values under the temporary id
+let renaming: Promise<void> | null = null;
 
+/** The id to use right now (sync). New chats get a temporary id. */
 export function currentChatId(site: SiteConfig, path: string = location.pathname): string {
   const fromUrl = site.chatIdFromPath(path);
   if (fromUrl) return fromUrl;
@@ -12,11 +17,32 @@ export function currentChatId(site: SiteConfig, path: string = location.pathname
   return tempId;
 }
 
-/** The temporary id in use, if any. Cleared once it has been renamed to a real id. */
-export function pendingTempId(): string | null {
-  return tempId;
+/** Call after TOKENIZE used `chatId`, so a temporary id is renamed once the URL has a real one. */
+export function markChatIdUsed(chatId: string): void {
+  if (chatId === tempId) tempUsed = true;
 }
 
-export function forgetTempId(): void {
-  tempId = null;
+/**
+ * The id to read values from. If a new chat has just received its real URL, its record is
+ * renamed first, so replies in that chat find their values.
+ */
+export async function resolveChatId(site: SiteConfig): Promise<string> {
+  const fromUrl = site.chatIdFromPath(location.pathname);
+  if (fromUrl && tempId && tempUsed) {
+    const from = tempId;
+    renaming ??= sendMessage({ type: 'RENAME_CHAT', site: site.id, fromChatId: from, toChatId: fromUrl })
+      .then(() => {
+        if (tempId === from) {
+          tempId = null;
+          tempUsed = false;
+        }
+      })
+      .finally(() => {
+        renaming = null;
+      });
+    await renaming;
+  } else if (fromUrl && tempId && !tempUsed) {
+    tempId = null; // left a new chat without sending anything
+  }
+  return fromUrl ?? currentChatId(site);
 }

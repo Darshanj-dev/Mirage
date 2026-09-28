@@ -25,7 +25,8 @@ export const SITES: Record<Site, SiteConfig> = {
     name: 'ChatGPT',
     host: 'chatgpt.com',
     promptBox: ['#prompt-textarea[contenteditable="true"]', 'form .ProseMirror[contenteditable="true"]'],
-    sendButton: ['#composer-submit-button', 'button[data-testid="send-button"]'],
+    // While a reply streams, #composer-submit-button becomes the stop button; isSendButton() skips it.
+    sendButton: ['button[data-testid="send-button"]', '#composer-submit-button'],
     composer: ['form'],
     // /c/<id>, or /g/<gpt>/c/<id> inside a custom GPT
     chatIdFromPath: (path) => /\/c\/([A-Za-z0-9-]+)/.exec(path)?.[1] ?? null,
@@ -64,12 +65,29 @@ export function findComposer(site: SiteConfig, box: HTMLElement): HTMLElement {
   return box;
 }
 
+/** A send button, not the stop button that takes its place while a reply streams. */
+export function isSendButton(site: SiteConfig, el: Element): el is HTMLButtonElement {
+  if (!(el instanceof HTMLButtonElement)) return false;
+  if (!site.sendButton.some((selector) => el.matches(selector))) return false;
+  const label = `${el.dataset.testid ?? ''} ${el.getAttribute('aria-label') ?? ''}`.toLowerCase();
+  return !label.includes('stop');
+}
+
+/** The send button a click landed on, if any. */
+export function sendButtonFromEvent(site: SiteConfig, target: EventTarget | null): HTMLButtonElement | null {
+  if (!(target instanceof Element)) return null;
+  for (const selector of site.sendButton) {
+    const el = target.closest(selector);
+    if (el && isSendButton(site, el)) return el;
+  }
+  return null;
+}
+
 export function findSendButton(site: SiteConfig, box: HTMLElement): HTMLButtonElement | null {
   const composer = findComposer(site, box);
   for (const root of [composer, document]) {
     for (const selector of site.sendButton) {
-      const el = root.querySelector<HTMLButtonElement>(selector);
-      if (el) return el;
+      for (const el of root.querySelectorAll(selector)) if (isSendButton(site, el)) return el;
     }
   }
   return null;
