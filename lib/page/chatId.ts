@@ -10,17 +10,6 @@ let tempUsed = false; // true once a send stored values under the temporary id
 let renaming: Promise<void> | null = null;
 const renamedListeners = new Set<() => void>();
 
-/**
- * A trail of chat-id events (ids, paths and outcomes only, never values), readable from the
- * DevTools console in MIRAGE's content-script context as `__mirageChatIdTrail`.
- */
-const trail: string[] = [];
-function note(event: string): void {
-  trail.push(`${new Date().toISOString().slice(11, 23)} ${event}`);
-  if (trail.length > 60) trail.shift();
-}
-(globalThis as { __mirageChatIdTrail?: string[] }).__mirageChatIdTrail = trail;
-
 /** Called after a new chat's values have moved to its real id, so the page can look again. */
 export function onChatRenamed(listener: () => void): () => void {
   renamedListeners.add(listener);
@@ -31,16 +20,12 @@ export function onChatRenamed(listener: () => void): () => void {
 export function currentChatId(site: SiteConfig, path: string = location.pathname): string {
   const fromUrl = site.chatIdFromPath(path);
   if (fromUrl) return fromUrl;
-  if (!tempId) {
-    tempId = `new-${crypto.randomUUID()}`;
-    note(`temp created ${tempId} at ${path}`);
-  }
+  tempId ??= `new-${crypto.randomUUID()}`;
   return tempId;
 }
 
 /** Call after TOKENIZE used `chatId`, so a temporary id is renamed once the URL has a real one. */
 export function markChatIdUsed(chatId: string): void {
-  note(`used ${chatId} (temp=${tempId}) at ${location.pathname}`);
   if (chatId === tempId) tempUsed = true;
 }
 
@@ -54,7 +39,6 @@ export async function resolveChatId(site: SiteConfig): Promise<string> {
     const from = tempId;
     renaming ??= sendMessage({ type: 'RENAME_CHAT', site: site.id, fromChatId: from, toChatId: fromUrl })
       .then((res) => {
-        note(`rename ${from} -> ${fromUrl}: ${res.ok ? `ok renamed=${res.renamed}` : `failed ${res.error}`}`);
         // Only forget the temporary id once the service worker has moved (or merged) its values;
         // otherwise try again on the next check.
         if (res.ok && tempId === from) {
@@ -68,7 +52,6 @@ export async function resolveChatId(site: SiteConfig): Promise<string> {
       });
     await renaming;
   } else if (fromUrl && tempId && !tempUsed) {
-    note(`temp dropped unused ${tempId} at ${location.pathname}`);
     tempId = null; // left a new chat without sending anything
   }
   return fromUrl ?? currentChatId(site);
