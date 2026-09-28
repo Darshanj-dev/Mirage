@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { browser } from 'wxt/browser';
 import {
+  TEMP_MAX_AGE_MS,
   VAULT_MAX_AGE_MS,
   clearVault,
   decryptJson,
@@ -134,6 +135,21 @@ describe('vault records', () => {
     expect(await renameChat('chatgpt', 'missing', 'x')).toBe(false);
   });
 
+  it('merges into the real id when it already has values', async () => {
+    await tokenize('chatgpt', 'new-1', [
+      { type: 'PAN', value: 'ABCDE1234F' },
+      { type: 'PHONE', value: '9845012345' },
+    ]);
+    await tokenize('chatgpt', 'real', [{ type: 'PAN', value: 'BNZPM2501K' }]); // takes «PAN_1» too
+    expect(await renameChat('chatgpt', 'new-1', 'real')).toBe(true);
+
+    const { values } = await restore('chatgpt', 'real', ['«PAN_1»', '«PHONE_1»']);
+    expect(values).toEqual({ '«PAN_1»': 'BNZPM2501K', '«PHONE_1»': '9845012345' });
+    expect(await loadRecord('chatgpt', 'new-1')).toBeNull();
+    // Numbering continues after both records, so new values never reuse a taken placeholder.
+    expect(await tokenize('chatgpt', 'real', [{ type: 'PHONE', value: '7012345678' }])).toEqual(['«PHONE_2»']);
+  });
+
   it('clears everything and reports the number of pairs', async () => {
     await tokenize('chatgpt', 'a', [
       { type: 'PAN', value: 'ABCDE1234F' },
@@ -155,6 +171,17 @@ describe('vault sweep', () => {
     expect(await sweepVault(now)).toBe(1);
     expect((await restore('chatgpt', 'old', ['«PAN_1»'])).values).toEqual({});
     expect((await restore('chatgpt', 'fresh', ['«PAN_1»'])).values).toEqual({ '«PAN_1»': 'BNZPM2501K' });
+  });
+
+  it('removes records stuck under a temporary new-chat id after an hour', async () => {
+    const now = 1_800_000_000_000;
+    await tokenize('chatgpt', 'new-abc', [{ type: 'PAN', value: 'ABCDE1234F' }], now - TEMP_MAX_AGE_MS - 1);
+    await tokenize('chatgpt', 'new-recent', [{ type: 'PAN', value: 'ABCDE1234F' }], now - 60_000);
+    await tokenize('chatgpt', 'real-chat', [{ type: 'PAN', value: 'ABCDE1234F' }], now - TEMP_MAX_AGE_MS - 1);
+    expect(await sweepVault(now)).toBe(1);
+    expect(await loadRecord('chatgpt', 'new-abc')).toBeNull();
+    expect(await loadRecord('chatgpt', 'new-recent')).not.toBeNull();
+    expect(await loadRecord('chatgpt', 'real-chat')).not.toBeNull();
   });
 
   it('counts a new send as use, so an active chat is kept', async () => {

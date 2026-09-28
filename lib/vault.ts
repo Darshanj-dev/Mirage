@@ -28,6 +28,7 @@ export interface EncryptedBlob {
 export type VaultIndex = Record<string, { lastUsedAt: number }>;
 
 export const VAULT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+export const TEMP_MAX_AGE_MS = 60 * 60 * 1000;
 const INDEX_KEY = 'vaultIndex';
 const ALWAYS_MASK_KEY = 'alwaysMask';
 
@@ -211,15 +212,32 @@ export async function restore(
   return record ? { values: lookupTokens(record, tokens), found: true } : { values: {}, found: false };
 }
 
-/** Moves a new chat's record from its temporary id to the real id once the URL has one. */
+/**
+ * Moves a new chat's record from its temporary id to the real id once the URL has one.
+ * If the real id already has a record, the two are merged; an entry whose placeholder is
+ * already taken by a different value is dropped (it can no longer be put back unambiguously).
+ */
 export function renameChat(site: Site, fromChatId: string, toChatId: string, now: number = Date.now()): Promise<boolean> {
   const fromKey = vaultStorageKey(site, fromChatId);
   const toKey = vaultStorageKey(site, toChatId);
   return withLock(fromKey, () =>
     withLock(toKey, async () => {
       const record = await loadRecord(site, fromChatId);
-      if (!record || (await loadRecord(site, toChatId))) return false;
-      await saveRecord({ ...record, chatId: toChatId, lastUsedAt: now });
+      if (!record) return false;
+      const target = await loadRecord(site, toChatId);
+      if (!target) {
+        await saveRecord({ ...record, chatId: toChatId, lastUsedAt: now });
+      } else {
+        const entries = [...target.entries];
+        for (const entry of record.entries) {
+          if (!entries.some((e) => e.token === entry.token)) entries.push(entry);
+        }
+        const counters = { ...target.counters };
+        for (const [label, n] of Object.entries(record.counters)) {
+          counters[label] = Math.max(counters[label] ?? 0, n ?? 0);
+        }
+        await saveRecord({ ...target, entries, counters, lastUsedAt: now });
+      }
       await removeKeys([fromKey]);
       return true;
     }),
@@ -256,11 +274,18 @@ export async function clearVault(): Promise<number> {
   return pairs;
 }
 
-/** Removes records not used for `maxAgeMs` (24 hours), without decrypting anything. */
+/**
+ * Removes records not used for `maxAgeMs` (24 hours), without decrypting anything.
+ * Records still under a temporary new-chat id after an hour were never matched to a real chat
+ * (e.g. the tab closed right after sending) and are removed too.
+ */
 export async function sweepVault(now: number = Date.now(), maxAgeMs: number = VAULT_MAX_AGE_MS): Promise<number> {
   const index = await loadIndex();
   const stale = Object.entries(index)
-    .filter(([, { lastUsedAt }]) => now - lastUsedAt >= maxAgeMs)
+    .filter(([key, { lastUsedAt }]) => {
+      const age = now - lastUsedAt;
+      return age >= maxAgeMs || (key.includes(':new-') && age >= TEMP_MAX_AGE_MS);
+    })
     .map(([key]) => key);
   await removeKeys(stale);
   return stale.length;

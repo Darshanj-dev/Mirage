@@ -6,6 +6,13 @@ import { sendMessage } from '../messages';
 import type { SiteConfig } from '../sites';
 
 let tempId: string | null = null;
+const renamedListeners = new Set<() => void>();
+
+/** Called after a new chat's values have moved to its real id, so the page can look again. */
+export function onChatRenamed(listener: () => void): () => void {
+  renamedListeners.add(listener);
+  return () => renamedListeners.delete(listener);
+}
 let tempUsed = false; // true once a send stored values under the temporary id
 let renaming: Promise<void> | null = null;
 
@@ -31,10 +38,13 @@ export async function resolveChatId(site: SiteConfig): Promise<string> {
   if (fromUrl && tempId && tempUsed) {
     const from = tempId;
     renaming ??= sendMessage({ type: 'RENAME_CHAT', site: site.id, fromChatId: from, toChatId: fromUrl })
-      .then(() => {
-        if (tempId === from) {
+      .then((res) => {
+        // Only forget the temporary id once the service worker has moved (or merged) its values;
+        // otherwise try again on the next check.
+        if (res.ok && tempId === from) {
           tempId = null;
           tempUsed = false;
+          renamedListeners.forEach((listener) => listener());
         }
       })
       .finally(() => {

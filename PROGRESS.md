@@ -66,5 +66,10 @@ M4 Protect and restore (code done, waiting for the manual gate on ChatGPT)
   (resolves PRD open question 3): "(Keep the «» placeholders exactly as written.)"
 - Restored values are written into the page's text nodes (no new elements), so a site re-render
   just re-triggers the restore. Real values then exist in the page DOM (on screen only).
+- ChatGPT new chats: URL is "/" while typing, then briefly /c/WEB:<client id>, then /c/<uuid>.
+  Only a full UUID counts as a chat id; values are saved under new-<uuid> and renamed (merged if
+  needed) once the real id appears. Unrenamed new-* records are swept after 1 hour.
+- Editable reply cards (ChatGPT "Email" writing blocks, ProseMirror): never rewritten; the value
+  shows on hover ("ChatGPT saw «PAN_1». Your detail: …").
 - Names are not found by rules (by design): test prompts list them under "names" as a known limit.
 - Popup text is a hard-coded placeholder until M5 moves every string to _locales/en/messages.json.

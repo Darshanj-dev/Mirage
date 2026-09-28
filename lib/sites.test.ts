@@ -11,8 +11,17 @@ describe('sites', () => {
 
   it('reads the ChatGPT conversation id from the URL', () => {
     const { chatIdFromPath } = SITES.chatgpt;
-    expect(chatIdFromPath('/c/68f2a1b4-5c3d-8000-9e1f-0a1b2c3d4e5f')).toBe('68f2a1b4-5c3d-8000-9e1f-0a1b2c3d4e5f');
-    expect(chatIdFromPath('/g/g-abc123-helper/c/68f2a1b4-5c3d')).toBe('68f2a1b4-5c3d');
+    expect(chatIdFromPath('/c/6aba9d4b-dda0-83ee-8efe-6b2ff8846a89')).toBe('6aba9d4b-dda0-83ee-8efe-6b2ff8846a89');
+    expect(chatIdFromPath('/g/g-abc123-helper/c/6aba9d4b-dda0-83ee-8efe-6b2ff8846a89')).toBe(
+      '6aba9d4b-dda0-83ee-8efe-6b2ff8846a89',
+    );
     expect(chatIdFromPath('/')).toBeNull();
+  });
+
+  it('ignores the in-between URL ChatGPT shows right after the first send', () => {
+    const { chatIdFromPath } = SITES.chatgpt;
+    expect(chatIdFromPath('/c/WEB:6aba9d4b-dda0-83ee-8efe-6b2ff8846a89')).toBeNull();
+    expect(chatIdFromPath('/c/WEB')).toBeNull();
+    expect(chatIdFromPath('/c/6aba9d4b-dda0')).toBeNull();
   });
 });

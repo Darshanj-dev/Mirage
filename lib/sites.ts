@@ -28,8 +28,11 @@ export const SITES: Record<Site, SiteConfig> = {
     // While a reply streams, #composer-submit-button becomes the stop button; isSendButton() skips it.
     sendButton: ['button[data-testid="send-button"]', '#composer-submit-button'],
     composer: ['form'],
-    // /c/<id>, or /g/<gpt>/c/<id> inside a custom GPT
-    chatIdFromPath: (path) => /\/c\/([A-Za-z0-9-]+)/.exec(path)?.[1] ?? null,
+    // /c/<uuid>, or /g/<gpt>/c/<uuid> inside a custom GPT. Only a full conversation UUID counts:
+    // right after the first send ChatGPT briefly shows /c/WEB:<client id>, which is not the chat's id.
+    chatIdFromPath: (path) =>
+      /\/c\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?![0-9a-z:-])/i.exec(path)?.[1]?.toLowerCase() ??
+      null,
     ready: true,
   },
   gemini: {

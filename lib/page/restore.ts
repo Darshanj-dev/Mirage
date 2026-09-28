@@ -8,7 +8,7 @@
 import { sendMessage } from '../messages';
 import type { SiteConfig } from '../sites';
 import { TOKEN_PATTERN, findTokens } from '../tokenizer';
-import { resolveChatId } from './chatId';
+import { onChatRenamed, resolveChatId } from './chatId';
 
 /**
  * restored: the value was written back into the text.
@@ -148,9 +148,21 @@ export function startRestorer({ site, isExcluded, isEditable, onSpans, onFailure
   queueTree(document.body);
   schedule();
 
+  // A new chat's values just moved to its real id: look again at anything not yet put back.
+  const stopListening = onChatRenamed(() => {
+    for (const [node, nodeSpans] of spans) {
+      if (nodeSpans.some((s) => s.kind === 'failed' || s.kind === 'expired')) {
+        written.delete(node);
+        pending.add(node);
+      }
+    }
+    schedule();
+  });
+
   return () => {
     stopped = true;
     clearTimeout(timer);
     observer.disconnect();
+    stopListening();
   };
 }
