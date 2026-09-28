@@ -18,6 +18,15 @@ describe('sites', () => {
     expect(chatIdFromPath('/')).toBeNull();
   });
 
+  it('reads the Gemini conversation id from the URL', () => {
+    const { chatIdFromPath } = SITES.gemini;
+    expect(chatIdFromPath('/app/1674c799c034fd88')).toBe('1674c799c034fd88');
+    expect(chatIdFromPath('/u/1/app/1674c799c034fd88')).toBe('1674c799c034fd88');
+    expect(chatIdFromPath('/app')).toBeNull();
+    expect(chatIdFromPath('/app/')).toBeNull();
+    expect(chatIdFromPath('/gem/some-gem-name')).toBeNull();
+  });
+
   it('ignores the in-between URL ChatGPT shows right after the first send', () => {
     const { chatIdFromPath } = SITES.chatgpt;
     expect(chatIdFromPath('/c/WEB:6aba9d4b-dda0-83ee-8efe-6b2ff8846a89')).toBeNull();

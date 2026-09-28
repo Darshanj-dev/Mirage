@@ -35,15 +35,19 @@ export const SITES: Record<Site, SiteConfig> = {
       null,
     ready: true,
   },
+  // Gemini selectors taken from gemini.google.com via DevTools on 2026-09-28. The prompt box is a
+  // Quill editor inside <rich-textarea>; Quill also keeps a hidden .ql-clipboard editable, never used.
   gemini: {
     id: 'gemini',
     name: 'Gemini',
     host: 'gemini.google.com',
-    promptBox: [], // M5: selectors to be taken from gemini.google.com
-    sendButton: [],
-    composer: [],
-    chatIdFromPath: (path) => /\/app\/([A-Za-z0-9]+)/.exec(path)?.[1] ?? null,
-    ready: false,
+    promptBox: ['rich-textarea .ql-editor[contenteditable="true"]', '.ql-editor.new-input-ui[contenteditable="true"]'],
+    // While a reply streams the button becomes "Stop response"; isSendButton() skips it.
+    sendButton: ['button[aria-label="Send message"]', 'button.send-button'],
+    composer: ['.input-area-container', 'input-area-v2', 'fieldset', '.text-input-field', 'rich-textarea'],
+    // /app/<16 hex>, also under /u/<n>/app/<id> for a second Google account. New chats are /app.
+    chatIdFromPath: (path) => /\/app\/([0-9a-f]{12,})(?![0-9a-z:_-])/i.exec(path)?.[1]?.toLowerCase() ?? null,
+    ready: true,
   },
 };
 
