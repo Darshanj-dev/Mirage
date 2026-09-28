@@ -34,6 +34,30 @@ describe('service worker messages', () => {
     expect(res).toEqual({ ok: true, values: { '«PAN_1»': 'ABCDE1234F' } });
   });
 
+  it('PREVIEW shows the next placeholders without saving', async () => {
+    await handleMessage({ type: 'TOKENIZE', site: 'chatgpt', chatId: 'c', findings: [{ type: 'PAN', value: 'ABCDE1234F' }] });
+    const preview = await handleMessage({
+      type: 'PREVIEW',
+      site: 'chatgpt',
+      chatId: 'c',
+      findings: [
+        { type: 'PAN', value: 'BNZPM2501K' },
+        { type: 'PAN', value: 'ABCDE1234F' },
+      ],
+    });
+    expect(preview).toEqual({ ok: true, tokens: ['«PAN_2»', '«PAN_1»'] });
+    expect(await handleMessage({ type: 'RESTORE', site: 'chatgpt', chatId: 'c', tokens: ['«PAN_2»'] })).toEqual({
+      ok: true,
+      values: {},
+    });
+    expect(JSON.stringify(await browser.storage.local.get(null))).not.toContain('BNZPM2501K');
+  });
+
+  it('PREVIEW rejects secrets too', async () => {
+    const res = await handleMessage({ type: 'PREVIEW', site: 'chatgpt', chatId: 'c', findings: [{ type: 'OTP', value: '1234' }] });
+    expect(res.ok).toBe(false);
+  });
+
   it('RENAME_CHAT moves a temporary chat', async () => {
     await handleMessage({ type: 'TOKENIZE', site: 'gemini', chatId: 'tmp', findings: [{ type: 'PAN', value: 'ABCDE1234F' }] });
     expect(await handleMessage({ type: 'RENAME_CHAT', site: 'gemini', fromChatId: 'tmp', toChatId: 'abc' })).toEqual({

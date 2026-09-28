@@ -20,11 +20,15 @@ M3 On the page (waiting for ChatGPT selectors from Inspect)
   fails to decrypt, old records swept, nothing stored as plain text.
 
 ## In progress
-- Nothing.
+- M3 On the page: code done, waiting for the manual gate on real ChatGPT.
+  lib/sites.ts (ChatGPT: #prompt-textarea ProseMirror, #composer-submit-button), React UI in a
+  Shadow DOM (ShieldBadge, Tooltip, MirageApp, usePromptWatcher), scan 300 ms after the box
+  changes (MutationObserver), underlines via the CSS Custom Highlight API (no editor DOM changes),
+  hover tooltips, PREVIEW message for exact placeholders, all strings in public/_locales/en.
 
 ## Next step
-- M3: needs the ChatGPT prompt box and send button HTML (Inspect) before writing lib/sites.ts.
-  Then mount React UI in Shadow DOM, run detect() 300 ms after typing, shield badge (S1) + count.
+- Check the M3 gate: "My PAN is ABCDE1234F" -> blue badge with 1, hover shows «PAN_1».
+- Then M4: intercept Enter/send, block panel, preview panel, masked send, restore replies.
 
 ## Decisions and gotchas
 - Project lives in the repo root (not a mirage/ subfolder), next to the original .docx specs.
@@ -49,5 +53,9 @@ M3 On the page (waiting for ChatGPT selectors from Inspect)
   placeholders. Nothing is ever sent raw because of it.
 - Added message RENAME_CHAT (temp id -> real chat id), documented in docs/schema.md.
 - fake-indexeddb added as a dev dependency (pre-approved in the Implementation Plan).
+- Added message PREVIEW (like TOKENIZE, saves nothing) so hover shows the real next placeholder.
+- The badge sits just above the composer's top-right corner so it never covers ChatGPT's buttons.
+- Plural strings use a `_one` key (badge_found_one etc.) so text says "1 item", not "1 items".
+- Page-changed state: the prompt box missing for 8 s shows a grey ! badge + error_pageChanged.
 - Names are not found by rules (by design): test prompts list them under "names" as a known limit.
 - Popup text is a hard-coded placeholder until M5 moves every string to _locales/en/messages.json.

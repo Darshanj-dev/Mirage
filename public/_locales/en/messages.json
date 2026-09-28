@@ -1,0 +1,63 @@
+{
+  "extName": { "message": "MIRAGE" },
+  "extDescription": { "message": "Hides your personal details and blocks secrets before you send a prompt to ChatGPT or Gemini. Real details stay on your device." },
+
+  "badge_off": { "message": "MIRAGE is paused. Click to turn on." },
+  "badge_watching": { "message": "MIRAGE is watching this prompt." },
+  "badge_found": { "message": "$N$ items will be hidden before sending.", "placeholders": { "n": { "content": "$1" } } },
+  "badge_found_one": { "message": "1 item will be hidden before sending." },
+  "badge_secret": { "message": "This prompt has a secret. It won't be sent." },
+  "badge_error": { "message": "MIRAGE couldn't check this prompt." },
+
+  "highlight_hover": { "message": "Will be sent as $PLACEHOLDER$", "placeholders": { "placeholder": { "content": "$1" } } },
+  "highlight_notPersonal": { "message": "Not personal" },
+
+  "preview_title": { "message": "$SITE$ will see this", "placeholders": { "site": { "content": "$1" } } },
+  "preview_footer": { "message": "$N$ items hidden · real details stay on this device", "placeholders": { "n": { "content": "$1" } } },
+  "preview_footer_one": { "message": "1 item hidden · real details stay on this device" },
+  "preview_send": { "message": "Send protected" },
+  "preview_cancel": { "message": "Cancel" },
+  "preview_allowOnce": { "message": "Send without hiding" },
+  "preview_confirmRaw": { "message": "Send without hiding? $SITE$ will see your real details.", "placeholders": { "site": { "content": "$1" } } },
+  "preview_quickOffer": { "message": "Skip this preview next time? Turn on Quick mode." },
+  "quick_chip": { "message": "$N$ items hidden", "placeholders": { "n": { "content": "$1" } } },
+  "quick_chip_one": { "message": "1 item hidden" },
+
+  "block_title": { "message": "This looks like $TYPE$. It won't be sent.", "placeholders": { "type": { "content": "$1" } } },
+  "block_body": { "message": "Secrets like this can give others access to your accounts." },
+  "block_fix": { "message": "Remove secret and send" },
+  "block_edit": { "message": "Edit prompt" },
+
+  "restore_hover": { "message": "Put back on your device. $SITE$ saw $PLACEHOLDER$.", "placeholders": { "site": { "content": "$1" }, "placeholder": { "content": "$2" } } },
+  "restore_failed": { "message": "$SITE$ changed this placeholder, so MIRAGE couldn't put the detail back.", "placeholders": { "site": { "content": "$1" } } },
+  "restore_expired": { "message": "Details cleared after 24 hours." },
+  "restore_copy": { "message": "Copy with details" },
+
+  "error_check": { "message": "MIRAGE couldn't check this prompt." },
+  "error_retry": { "message": "Try again" },
+  "error_pageChanged": { "message": "MIRAGE can't protect this page right now. Your prompts are not being checked." },
+
+  "popup_status": { "message": "Protecting $SITE$", "placeholders": { "site": { "content": "$1" } } },
+  "popup_unsupported": { "message": "Not supported on this site yet" },
+  "popup_week": { "message": "$HIDDEN$ details hidden · $BLOCKED$ secrets stopped this week", "placeholders": { "hidden": { "content": "$1" }, "blocked": { "content": "$2" } } },
+  "popup_clear": { "message": "Clear saved details" },
+  "popup_clearConfirm": { "message": "Clear all saved details? Older replies will show placeholders." },
+  "popup_footer": { "message": "Everything stays on this device." },
+
+  "welcome_headline": { "message": "MIRAGE hides your personal details from AI chatbots." },
+  "welcome_done": { "message": "You're protected on ChatGPT and Gemini." },
+
+  "secret_API_KEY": { "message": "an API key" },
+  "secret_PASSWORD": { "message": "a password" },
+  "secret_CARD": { "message": "a card number" },
+  "secret_OTP": { "message": "a one-time code" },
+
+  "type_AADHAAR": { "message": "Aadhaar number" },
+  "type_PAN": { "message": "PAN" },
+  "type_PHONE": { "message": "Phone number" },
+  "type_EMAIL": { "message": "Email" },
+  "type_UPI": { "message": "UPI ID" },
+  "type_IFSC": { "message": "IFSC code" },
+  "type_NAME": { "message": "Name" },
+  "type_CUSTOM": { "message": "Always hidden" }
+}

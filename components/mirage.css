@@ -1,0 +1,106 @@
+/* MIRAGE page UI. Lives inside a Shadow DOM, so the chatbot's styles never reach it.
+   One blue for protected, one red for blocked, nothing else coloured. */
+
+:host {
+  --mirage-blue: #2563eb;
+  --mirage-red: #dc2626;
+  --mirage-grey: #8e8e93;
+  --mirage-ink: #111827;
+  --mirage-paper: #ffffff;
+  all: initial;
+}
+
+.mirage-badge {
+  position: fixed;
+  z-index: 2147483646;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: default;
+  font: 600 11px/1 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--mirage-blue);
+}
+
+.mirage-badge:focus-visible {
+  outline: 2px solid var(--mirage-blue);
+  outline-offset: 1px;
+}
+
+.mirage-badge svg,
+.mirage-badge__mark {
+  grid-area: 1 / 1;
+}
+
+.mirage-badge__shield {
+  fill: none;
+  stroke: currentColor;
+}
+
+.mirage-badge__mark {
+  color: var(--mirage-paper);
+  transform: translateY(-0.5px);
+}
+
+.mirage-badge--off,
+.mirage-badge--error,
+.mirage-badge--pageChanged {
+  color: var(--mirage-grey);
+}
+
+.mirage-badge--off {
+  cursor: pointer;
+}
+
+.mirage-badge--found .mirage-badge__shield,
+.mirage-badge--secret .mirage-badge__shield,
+.mirage-badge--error .mirage-badge__shield,
+.mirage-badge--pageChanged .mirage-badge__shield {
+  fill: currentColor;
+}
+
+.mirage-badge--secret {
+  color: var(--mirage-red);
+}
+
+.mirage-tooltip {
+  position: fixed;
+  z-index: 2147483647;
+  max-width: 280px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--mirage-ink);
+  color: #f9fafb;
+  font: 400 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
+  pointer-events: none;
+}
+
+.mirage-tooltip--center {
+  transform: translateX(-50%);
+}
+
+.mirage-tooltip__title {
+  margin: 0;
+}
+
+.mirage-tooltip__list {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.mirage-tooltip__list li {
+  padding: 2px 0 2px 10px;
+  border-left: 2px solid var(--mirage-blue);
+  margin-top: 3px;
+}
+
+.mirage-tooltip__list li.is-secret {
+  border-left-color: var(--mirage-red);
+}

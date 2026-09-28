@@ -13,6 +13,14 @@ export interface TokenizeRequest {
   findings: { type: MaskType; value: string }[]; // personal details only, never secrets
 }
 
+/** Same as TOKENIZE but saves nothing: the placeholders shown on hover while typing. */
+export interface PreviewRequest {
+  type: 'PREVIEW';
+  site: Site;
+  chatId: string;
+  findings: { type: MaskType; value: string }[];
+}
+
 export interface RestoreRequest {
   type: 'RESTORE';
   site: Site;
@@ -55,6 +63,7 @@ export interface CountRequest {
 
 export type Request =
   | TokenizeRequest
+  | PreviewRequest
   | RestoreRequest
   | RenameChatRequest
   | GetSettingsRequest
@@ -72,6 +81,7 @@ export interface SettingsResult {
 
 export interface ResultMap {
   TOKENIZE: { tokens: string[] };
+  PREVIEW: { tokens: string[] };
   RESTORE: { values: Record<string, string> };
   RENAME_CHAT: { renamed: boolean };
   GET_SETTINGS: SettingsResult;
@@ -101,6 +111,7 @@ export function isRequest(msg: unknown): msg is Request {
   if (!isObject(msg) || !isString(msg.type)) return false;
   switch (msg.type) {
     case 'TOKENIZE':
+    case 'PREVIEW':
       return (
         isString(msg.site) &&
         SITES.includes(msg.site) &&

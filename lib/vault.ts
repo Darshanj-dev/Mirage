@@ -192,6 +192,12 @@ export function tokenize(
   });
 }
 
+/** The placeholders `tokenize` would give right now, without saving anything. */
+export async function previewTokens(site: Site, chatId: string, requests: readonly TokenRequest[]): Promise<string[]> {
+  const record = await loadRecord(site, chatId);
+  return assignTokens(record ?? emptyTokenState(), requests).tokens;
+}
+
 /** Real values for the placeholders found in a reply; unknown ones are left out. */
 export async function restore(site: Site, chatId: string, tokens: readonly string[]): Promise<Record<string, string>> {
   const record = await loadRecord(site, chatId);

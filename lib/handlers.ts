@@ -3,7 +3,7 @@
 
 import { isRequest, type Request, type Response, type ResultMap, type SettingsPatch } from './messages';
 import { loadSettings, loadStats, recordCounts, saveSettings, type Counts } from './settings';
-import { clearVault, loadAlwaysMask, renameChat, restore, saveAlwaysMask, tokenize } from './vault';
+import { clearVault, loadAlwaysMask, previewTokens, renameChat, restore, saveAlwaysMask, tokenize } from './vault';
 
 type AnyResponse = Response<Request['type']>;
 
@@ -52,6 +52,8 @@ export async function handleMessage(msg: unknown, now: number = Date.now()): Pro
     switch (msg.type) {
       case 'TOKENIZE':
         return ok<'TOKENIZE'>({ tokens: await tokenize(msg.site, msg.chatId, msg.findings, now) });
+      case 'PREVIEW':
+        return ok<'PREVIEW'>({ tokens: await previewTokens(msg.site, msg.chatId, msg.findings) });
       case 'RESTORE':
         return ok<'RESTORE'>({ values: await restore(msg.site, msg.chatId, msg.tokens) });
       case 'RENAME_CHAT':
