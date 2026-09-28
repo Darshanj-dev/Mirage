@@ -4,6 +4,7 @@
 import ReactDOM from 'react-dom/client';
 import { MirageApp } from '@/components/MirageApp';
 import '@/components/mirage.css';
+import { clearHighlights, setRestoreHighlights } from '@/lib/page/highlights';
 import { installSendGuard } from '@/lib/page/sendGuard';
 import { siteForHost } from '@/lib/sites';
 
@@ -15,8 +16,14 @@ export default defineContentScript({
     const site = siteForHost(location.hostname);
     if (!site?.ready) return; // Gemini: selectors come in M5
 
+    // When MIRAGE is turned off or reloaded, Chrome cuts this copy off from the extension.
+    // Remove everything it added, so the page works exactly as if MIRAGE were not installed.
     const guard = installSendGuard(site);
-    ctx.onInvalidated(() => guard.dispose()); // extension reloaded: stop guarding with dead code
+    ctx.onInvalidated(() => {
+      guard.dispose();
+      clearHighlights();
+      setRestoreHighlights([], []);
+    });
 
     if (document.readyState === 'loading') {
       await new Promise<void>((resolve) => document.addEventListener('DOMContentLoaded', () => resolve(), { once: true }));
@@ -36,6 +43,8 @@ export default defineContentScript({
         root?.unmount();
       },
     });
+    if (ctx.isInvalid) return;
     ui.mount();
+    ctx.onInvalidated(() => ui.remove());
   },
 });

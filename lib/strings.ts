@@ -8,7 +8,11 @@ export type StringKey = keyof Messages;
 
 /** The string for `key`, with $1, $2… filled from `subs`. Falls back to the key if missing. */
 export function t(key: StringKey, subs: readonly (string | number)[] = []): string {
-  return browser.i18n.getMessage(key, subs.map(String)) || key;
+  try {
+    return browser.i18n.getMessage(key, subs.map(String)) || key;
+  } catch {
+    return key; // extension was reloaded or turned off while this page was open
+  }
 }
 
 /** Picks the `_one` variant for a count of 1, so text reads "1 item", not "1 items". */

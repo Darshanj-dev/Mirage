@@ -75,7 +75,13 @@ export function usePromptWatcher(site: SiteConfig) {
       if (area === 'local' && ('settings' in changes || 'alwaysMask' in changes)) void loadSettings();
     };
     browser.storage.onChanged.addListener(onChange);
-    return () => browser.storage.onChanged.removeListener(onChange);
+    return () => {
+      try {
+        browser.storage.onChanged.removeListener(onChange);
+      } catch {
+        // extension context already gone (reloaded or turned off)
+      }
+    };
   }, [loadSettings]);
 
   // ---- the prompt box: ChatGPT is a single-page app and swaps it out on navigation
