@@ -26,12 +26,16 @@ M5 Complete v1
   Gate passed on real ChatGPT 2026-09-28: PAN -> blue badge 1 + «PAN_1»; password -> red badge.
 
 ## In progress
-- Nothing.
+- M5 session 1+2+3 (partial): popup (S7: on/off, status, weekly counts, Quick mode, Safe words,
+  Always hide, Clear saved details), red dot on the toolbar icon when off, right-click
+  "Always hide" (contextMenus), Quick mode offer after 5 protected sends, "Not personal" button
+  in the underline tooltip, first-run badge pulse, welcome page (S8) opened on install.
 
 ## Next step
-- Confirm F5 on a protected chat keeps restored values (fixed in 71c1aea, not yet seen after reload).
-- M5 session 1: Gemini selectors (take them from gemini.google.com via DevTools, like ChatGPT),
-  then the popup (S7): on/off, status, weekly counts, Quick mode, Safe words, Always mask, Clear.
+- Manual check of the new popup/welcome/tooltip on ChatGPT.
+- Gemini selectors (waiting for the DevTools output from gemini.google.com), then Gemini support.
+- "Copy with details" beside replies and the protected-message receipt (S6): waiting for the
+  ChatGPT reply action-bar selectors.
 
 ## Decisions and gotchas
 - Project lives in the repo root (not a mirage/ subfolder), next to the original .docx specs.
@@ -71,5 +75,7 @@ M5 Complete v1
   needed) once the real id appears. Unrenamed new-* records are swept after 1 hour.
 - Editable reply cards (ChatGPT "Email" writing blocks, ProseMirror): never rewritten; the value
   shows on hover ("ChatGPT saw «PAN_1». Your detail: …").
+- Popup status reads the active tab URL via host permissions only (no "tabs" permission).
+- Right-click menu is "Always hide \"%s\"" on selections on the two chatbot sites; terms of 2-60 chars.
 - Names are not found by rules (by design): test prompts list them under "names" as a known limit.
 - Popup text is a hard-coded placeholder until M5 moves every string to _locales/en/messages.json.

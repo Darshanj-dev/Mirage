@@ -24,6 +24,8 @@ export interface PageSettings extends DetectSettings {
   enabled: boolean;
   quickMode: boolean;
   protectedSendCount: number;
+  quickModeOffered: boolean;
+  firstRun: boolean;
 }
 
 const SCAN_DELAY_MS = 300;
@@ -60,6 +62,8 @@ export function usePromptWatcher(site: SiteConfig) {
       enabled: res.settings.enabled,
       quickMode: res.settings.quickMode,
       protectedSendCount: res.settings.protectedSendCount,
+      quickModeOffered: res.settings.quickModeOffered,
+      firstRun: res.firstRun,
       safeWords: res.settings.safeWords,
       alwaysMask: res.alwaysMask,
     };
@@ -194,5 +198,15 @@ export function usePromptWatcher(site: SiteConfig) {
     await loadSettings();
   }, [loadSettings]);
 
-  return { status, scan, anchor, hover, settings, settingsRef, loadSettings, turnOn, retry: scanNow };
+  /** "Not personal": this value is never hidden again. */
+  const markSafe = useCallback(
+    async (value: string) => {
+      const current = settingsRef.current?.safeWords ?? [];
+      await sendMessage({ type: 'SET_SETTINGS', settings: { safeWords: [...current, value] } });
+      await loadSettings();
+    },
+    [loadSettings],
+  );
+
+  return { status, scan, anchor, hover, settings, settingsRef, loadSettings, turnOn, markSafe, retry: scanNow };
 }

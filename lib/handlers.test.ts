@@ -84,6 +84,12 @@ describe('service worker messages', () => {
     expect(JSON.stringify(await browser.storage.local.get(null))).not.toContain('Priya');
   });
 
+  it('reports first run until ONBOARDING_DONE', async () => {
+    expect(await handleMessage({ type: 'GET_SETTINGS' })).toMatchObject({ ok: true, firstRun: true });
+    expect(await handleMessage({ type: 'ONBOARDING_DONE' })).toEqual({ ok: true });
+    expect(await handleMessage({ type: 'GET_SETTINGS' })).toMatchObject({ ok: true, firstRun: false });
+  });
+
   it('SET_SETTINGS ignores unknown fields', async () => {
     await handleMessage({ type: 'SET_SETTINGS', settings: { enabled: false, evil: 'x', v: 99 } });
     const { settings } = await browser.storage.local.get('settings');

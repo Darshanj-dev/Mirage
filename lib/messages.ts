@@ -48,6 +48,11 @@ export interface SetSettingsRequest {
   alwaysMask?: string[]; // replaces the whole Always mask list when present
 }
 
+/** The page has shown the first-run hint (the badge pulse); don't show it again. */
+export interface OnboardingDoneRequest {
+  type: 'ONBOARDING_DONE';
+}
+
 export interface ClearVaultRequest {
   type: 'CLEAR_VAULT';
 }
@@ -68,6 +73,7 @@ export type Request =
   | RenameChatRequest
   | GetSettingsRequest
   | SetSettingsRequest
+  | OnboardingDoneRequest
   | ClearVaultRequest
   | GetStatsRequest
   | CountRequest;
@@ -77,6 +83,7 @@ export type RequestType = Request['type'];
 export interface SettingsResult {
   settings: Settings;
   alwaysMask: string[];
+  firstRun: boolean; // true until the first-run hint has been shown on a chatbot page
 }
 
 export interface ResultMap {
@@ -86,6 +93,7 @@ export interface ResultMap {
   RENAME_CHAT: { renamed: boolean };
   GET_SETTINGS: SettingsResult;
   SET_SETTINGS: SettingsResult;
+  ONBOARDING_DONE: Record<string, never>;
   CLEAR_VAULT: { cleared: number };
   GET_STATS: { stats: Stats };
   COUNT: Record<string, never>;
@@ -131,6 +139,7 @@ export function isRequest(msg: unknown): msg is Request {
     case 'COUNT':
       return isObject(msg.delta);
     case 'GET_SETTINGS':
+    case 'ONBOARDING_DONE':
     case 'CLEAR_VAULT':
     case 'GET_STATS':
       return true;

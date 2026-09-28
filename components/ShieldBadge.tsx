@@ -9,16 +9,17 @@ interface Props {
   count: number;
   label: string; // tooltip text, also read by screen readers
   style: CSSProperties;
+  pulse?: boolean; // first run: pulse once so the user notices it
   onClick(): void;
   onHoverChange(hovering: boolean): void;
 }
 
-export function ShieldBadge({ status, count, label, style, onClick, onHoverChange }: Props) {
+export function ShieldBadge({ status, count, label, style, pulse = false, onClick, onHoverChange }: Props) {
   const mark = status === 'secret' || status === 'error' || status === 'pageChanged' ? '!' : status === 'found' ? String(count) : '';
   return (
     <button
       type="button"
-      className={`mirage-badge mirage-badge--${status}`}
+      className={`mirage-badge mirage-badge--${status}${pulse ? ' mirage-badge--pulse' : ''}`}
       style={style}
       aria-label={label}
       onClick={onClick}

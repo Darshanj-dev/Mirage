@@ -1,7 +1,8 @@
 // Everything MIRAGE shows inside the chatbot page, rendered in a Shadow DOM.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { isSecretType, type Finding } from '@/lib/detector/types';
+import { sendMessage } from '@/lib/messages';
 import type { SendGuard } from '@/lib/page/sendGuard';
 import type { RestoredSpan } from '@/lib/page/restore';
 import type { SiteConfig } from '@/lib/sites';
@@ -11,11 +12,14 @@ import { ConfirmRawPanel, ErrorPanel } from './NoticePanels';
 import { PreviewPanel } from './PreviewPanel';
 import { ShieldBadge } from './ShieldBadge';
 import { Tooltip } from './Tooltip';
+import type { HoverTarget } from './useRangeHover';
 import { usePromptWatcher, type BadgeStatus } from './usePromptWatcher';
 import { useRestorer } from './useRestorer';
 import { useSendFlow } from './useSendFlow';
 
 const BADGE_SIZE = 30;
+const QUICK_OFFER_AFTER = 5; // protected sends before Quick mode is offered once
+const HOVER_GRACE_MS = 350; // time to move the mouse from an underline onto its tooltip
 
 function badgeText(status: BadgeStatus, count: number): string {
   switch (status) {
@@ -60,6 +64,48 @@ export function MirageApp({ site, guard }: { site: SiteConfig; guard: SendGuard 
   const flow = useSendFlow(site, guard, watcher.settingsRef, watcher.loadSettings);
   const restorer = useRestorer(site);
   const [badgeHover, setBadgeHover] = useState(false);
+  const settings = watcher.settings;
+
+  // Keep a detail's tooltip open briefly after the mouse leaves the underline, so its
+  // "Not personal" button can be reached.
+  const [pinned, setPinned] = useState<HoverTarget | null>(null);
+  const overTooltip = useRef(false);
+  useEffect(() => {
+    if (hover) {
+      setPinned(hover);
+      return;
+    }
+    const timer = setTimeout(() => {
+      if (!overTooltip.current) setPinned(null);
+    }, HOVER_GRACE_MS);
+    return () => clearTimeout(timer);
+  }, [hover]);
+
+  // First run: pulse the badge once, then remember it was shown.
+  const [pulse, setPulse] = useState(false);
+  useEffect(() => {
+    if (!settings?.firstRun || !anchor) return;
+    setPulse(true);
+    void sendMessage({ type: 'ONBOARDING_DONE' });
+    const timer = setTimeout(() => setPulse(false), 4000);
+    return () => clearTimeout(timer);
+  }, [settings?.firstRun, anchor !== null]);
+
+  // Offer Quick mode once, on the first preview after 5 protected sends.
+  const offerShownNow = useRef(false);
+  const showQuickOffer =
+    flow.panel?.kind === 'preview' &&
+    !!settings &&
+    !settings.quickMode &&
+    (!settings.quickModeOffered || offerShownNow.current) &&
+    settings.protectedSendCount >= QUICK_OFFER_AFTER;
+  useEffect(() => {
+    if (showQuickOffer && !offerShownNow.current) {
+      offerShownNow.current = true;
+      void sendMessage({ type: 'SET_SETTINGS', settings: { quickModeOffered: true } });
+    }
+    if (flow.panel?.kind !== 'preview') offerShownNow.current = false;
+  }, [showQuickOffer, flow.panel?.kind]);
 
   // Just above the top-right corner of the composer, so it never covers the site's own buttons.
   const badgeTop = anchor ? Math.max(4, anchor.top - BADGE_SIZE - 6) : window.innerHeight - BADGE_SIZE - 16;
@@ -67,7 +113,7 @@ export function MirageApp({ site, guard }: { site: SiteConfig; guard: SendGuard 
   const badgeRect = { top: badgeTop, left: badgeLeft, width: BADGE_SIZE, bottom: badgeTop + BADGE_SIZE };
 
   const count = scan.findings.length;
-  const hovered = hover ? scan.findings[hover.index] : undefined;
+  const hovered = pinned ? scan.findings[pinned.index] : undefined;
   const restored = restorer.hover ? restorer.spans[restorer.hover.index] : undefined;
   const panel = flow.panel;
 
@@ -79,6 +125,7 @@ export function MirageApp({ site, guard }: { site: SiteConfig; guard: SendGuard 
           count={count}
           label={badgeText(status, count)}
           style={{ top: badgeRect.top, left: badgeRect.left }}
+          pulse={pulse}
           onClick={() => {
             if (status === 'off') void watcher.turnOn();
           }}
@@ -101,8 +148,29 @@ export function MirageApp({ site, guard }: { site: SiteConfig; guard: SendGuard 
         </Tooltip>
       )}
 
-      {!panel && hover && hovered && !badgeHover && (
-        <Tooltip rect={hover.rect}>{hoverText(hovered, scan.tokens[hover.index] ?? null)}</Tooltip>
+      {!panel && pinned && hovered && !badgeHover && (
+        <Tooltip
+          rect={pinned.rect}
+          onHoverChange={(inside) => {
+            overTooltip.current = inside;
+            if (!inside && !hover) setPinned(null);
+          }}
+        >
+          <span>{hoverText(hovered, scan.tokens[pinned.index] ?? null)}</span>
+          {!isSecretType(hovered.type) && (
+            <button
+              type="button"
+              className="mirage-tooltip__action"
+              onClick={() => {
+                overTooltip.current = false;
+                setPinned(null);
+                void watcher.markSafe(hovered.value);
+              }}
+            >
+              {t('highlight_notPersonal')}
+            </button>
+          )}
+        </Tooltip>
       )}
 
       {restorer.hover && restored && <Tooltip rect={restorer.hover.rect}>{restoreText(restored, site.name)}</Tooltip>}
@@ -114,7 +182,8 @@ export function MirageApp({ site, guard }: { site: SiteConfig; guard: SendGuard 
           masked={panel.masked}
           hidden={panel.hidden}
           replacements={panel.replacements}
-          showQuickOffer={false}
+          showQuickOffer={showQuickOffer}
+          onQuickModeOn={() => void sendMessage({ type: 'SET_SETTINGS', settings: { quickMode: true, quickModeOffered: true } })}
           onSend={flow.sendProtected}
           onCancel={flow.close}
           onSendRaw={flow.askSendRaw}

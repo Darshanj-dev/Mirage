@@ -2,7 +2,7 @@
 // the one part of MIRAGE allowed to touch the vault.
 
 import { isRequest, type Request, type Response, type ResultMap, type SettingsPatch } from './messages';
-import { loadSettings, loadStats, recordCounts, saveSettings, type Counts } from './settings';
+import { loadMeta, loadSettings, loadStats, recordCounts, saveMeta, saveSettings, type Counts } from './settings';
 import { clearVault, loadAlwaysMask, previewTokens, renameChat, restore, saveAlwaysMask, tokenize } from './vault';
 
 type AnyResponse = Response<Request['type']>;
@@ -59,12 +59,19 @@ export async function handleMessage(msg: unknown, now: number = Date.now()): Pro
       case 'RENAME_CHAT':
         return ok<'RENAME_CHAT'>({ renamed: await renameChat(msg.site, msg.fromChatId, msg.toChatId, now) });
       case 'GET_SETTINGS':
-        return ok<'GET_SETTINGS'>({ settings: await loadSettings(), alwaysMask: await loadAlwaysMask() });
+        return ok<'GET_SETTINGS'>({
+          settings: await loadSettings(),
+          alwaysMask: await loadAlwaysMask(),
+          firstRun: !(await loadMeta(now)).onboardingDone,
+        });
       case 'SET_SETTINGS': {
         const settings = msg.settings ? await saveSettings(pickSettings(msg.settings)) : await loadSettings();
         const alwaysMask = msg.alwaysMask ? await saveAlwaysMask(msg.alwaysMask) : await loadAlwaysMask();
-        return ok<'SET_SETTINGS'>({ settings, alwaysMask });
+        return ok<'SET_SETTINGS'>({ settings, alwaysMask, firstRun: !(await loadMeta(now)).onboardingDone });
       }
+      case 'ONBOARDING_DONE':
+        await saveMeta({ onboardingDone: true }, now);
+        return ok<'ONBOARDING_DONE'>({});
       case 'CLEAR_VAULT':
         return ok<'CLEAR_VAULT'>({ cleared: await clearVault() });
       case 'GET_STATS':

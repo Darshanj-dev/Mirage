@@ -16,7 +16,7 @@ export function t(key: StringKey, subs: readonly (string | number)[] = []): stri
 }
 
 /** Picks the `_one` variant for a count of 1, so text reads "1 item", not "1 items". */
-export function tCount(key: 'badge_found' | 'preview_footer' | 'quick_chip', n: number): string {
+export function tCount(key: 'badge_found' | 'preview_footer' | 'quick_chip' | 'popup_cleared', n: number): string {
   return n === 1 ? t(`${key}_one`) : t(key, [n]);
 }
 

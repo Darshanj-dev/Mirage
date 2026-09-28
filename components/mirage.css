@@ -258,3 +258,45 @@
   .mirage-btn { border-color: rgb(255 255 255 / 0.2); }
   .mirage-btn:hover { background: rgb(255 255 255 / 0.08); }
 }
+
+/* ---- interactive tooltip ("Not personal") */
+
+.mirage-tooltip--interactive {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mirage-tooltip__action {
+  flex: none;
+  padding: 3px 10px;
+  border: 1px solid rgb(255 255 255 / 0.35);
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  font: 500 12.5px/1.3 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  cursor: pointer;
+}
+
+.mirage-tooltip__action:hover {
+  background: rgb(255 255 255 / 0.12);
+}
+
+/* ---- first-run pulse on the badge */
+
+.mirage-badge--pulse {
+  animation: mirage-pulse 1.2s ease-out 3;
+}
+
+@keyframes mirage-pulse {
+  0% { box-shadow: 0 0 0 0 rgb(37 99 235 / 0.55); }
+  100% { box-shadow: 0 0 0 14px rgb(37 99 235 / 0); }
+}
+
+/* ---- Quick mode offer link inside the preview footer */
+
+.mirage-panel__offer .mirage-link {
+  margin-left: 6px;
+  color: var(--mirage-blue);
+}

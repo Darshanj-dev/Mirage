@@ -11,6 +11,7 @@ interface Props {
   hidden: readonly Finding[];
   replacements: readonly { text: string }[];
   showQuickOffer: boolean;
+  onQuickModeOn(): void;
   onSend(): void;
   onCancel(): void;
   onSendRaw(): void;
@@ -18,7 +19,18 @@ interface Props {
 
 const PLACEHOLDER = /(«[A-Z_]+(?:_\d+)?»)/;
 
-export function PreviewPanel({ siteName, anchor, masked, hidden, replacements, showQuickOffer, onSend, onCancel, onSendRaw }: Props) {
+export function PreviewPanel({
+  siteName,
+  anchor,
+  masked,
+  hidden,
+  replacements,
+  showQuickOffer,
+  onQuickModeOn,
+  onSend,
+  onCancel,
+  onSendRaw,
+}: Props) {
   // Pill tooltip names the kind of detail, never the value itself.
   const kindOf = new Map(replacements.map((r, i) => [r.text, hidden[i] ? typeName(hidden[i].type) : '']));
   const count = new Set(replacements.map((r) => r.text)).size;
@@ -32,7 +44,14 @@ export function PreviewPanel({ siteName, anchor, masked, hidden, replacements, s
       footer={
         <>
           {tCount('preview_footer', count)}
-          {showQuickOffer && <span className="mirage-panel__offer">{t('preview_quickOffer')}</span>}
+          {showQuickOffer && (
+            <span className="mirage-panel__offer">
+              {t('preview_quickOfferQuestion')}
+              <button type="button" className="mirage-link" onClick={onQuickModeOn}>
+                {t('preview_quickOfferAction')}
+              </button>
+            </span>
+          )}
         </>
       }
       actions={
