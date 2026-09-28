@@ -26,16 +26,17 @@ M5 Complete v1
   Gate passed on real ChatGPT 2026-09-28: PAN -> blue badge 1 + «PAN_1»; password -> red badge.
 
 ## In progress
-- M5 session 1+2+3 (partial): popup (S7: on/off, status, weekly counts, Quick mode, Safe words,
-  Always hide, Clear saved details), red dot on the toolbar icon when off, right-click
-  "Always hide" (contextMenus), Quick mode offer after 5 protected sends, "Not personal" button
-  in the underline tooltip, first-run badge pulse, welcome page (S8) opened on install.
+- M5 Complete v1, nearly done. Verified on the real sites 2026-09-28: popup, Always hide
+  (name -> «PERSON_1»), Not personal, off switch + red dot, Quick mode offer, welcome page,
+  Gemini detection + protected send + restore.
 
 ## Next step
-- Manual check of the new popup/welcome/tooltip on ChatGPT.
-- Gemini selectors (waiting for the DevTools output from gemini.google.com), then Gemini support.
-- "Copy with details" beside replies and the protected-message receipt (S6): waiting for the
-  ChatGPT reply action-bar selectors.
+- "Copy with details" beside replies + protected-message receipt (S6): run the ChatGPT
+  reply-buttons snippet (in chat history) to get the action-bar selectors first.
+- Quick checks still open: Gemini block panel with "password: tiger2026"; F5 on a protected
+  Gemini chat keeps values.
+- Then M5 gate (both sites, settings survive a browser restart), then M6 Showcase: run the test
+  set for real numbers, README, demo video/GIF, proper shield icon, npm run zip.
 
 ## Decisions and gotchas
 - Project lives in the repo root (not a mirage/ subfolder), next to the original .docx specs.
