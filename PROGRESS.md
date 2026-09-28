@@ -31,8 +31,10 @@ M5 Complete v1
   Gemini detection + protected send + restore.
 
 ## Next step
-- "Copy with details" beside replies + protected-message receipt (S6): run the ChatGPT
-  reply-buttons snippet (in chat history) to get the action-bar selectors first.
+- "Copy with details" beside replies + protected-message receipt (S6). ChatGPT selectors (from
+  DevTools 2026-09-29): reply turn = section[data-testid^="conversation-turn-"] containing
+  [data-message-author-role="assistant"]; its copy button = button[data-testid="copy-turn-action-button"]
+  (aria "Copy response"); also feedback-turn-action-button. Gemini's reply action bar still unknown.
 - Quick checks still open: Gemini block panel with "password: tiger2026"; F5 on a protected
   Gemini chat keeps values.
 - Then M5 gate (both sites, settings survive a browser restart), then M6 Showcase: run the test
