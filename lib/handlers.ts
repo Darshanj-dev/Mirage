@@ -73,8 +73,9 @@ export async function handleMessage(msg: unknown, now: number = Date.now()): Pro
         await recordCounts(sanitizeDelta(msg.delta), now);
         return ok<'COUNT'>({});
     }
-  } catch {
-    // Never echo details: an error message could contain a value.
-    return { ok: false, error: `MIRAGE could not handle ${msg.type}` };
+  } catch (err) {
+    // Only the error's kind is reported: its message could contain a value.
+    const kind = err instanceof Error ? err.name : typeof err;
+    return { ok: false, error: `MIRAGE could not handle ${msg.type} (${kind})` };
   }
 }
