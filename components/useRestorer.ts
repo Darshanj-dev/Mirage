@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { sendMessage } from '@/lib/messages';
 import { setRestoreHighlights } from '@/lib/page/highlights';
 import { startRestorer, type RestoredSpan } from '@/lib/page/restore';
-import type { SiteConfig } from '@/lib/sites';
+import { findPromptBox, type SiteConfig } from '@/lib/sites';
 import { useRangeHover } from './useRangeHover';
 
 export function useRestorer(site: SiteConfig) {
@@ -14,12 +14,14 @@ export function useRestorer(site: SiteConfig) {
     () =>
       startRestorer({
         site,
-        // Never rewrite what the user is typing.
-        isExcluded: (node) => !!node.parentElement?.closest('[contenteditable="true"], [contenteditable=""]'),
+        // Never touch what the user is typing.
+        isExcluded: (node) => !!findPromptBox(site)?.contains(node),
+        isEditable: (node) => !!node.parentElement?.closest('[contenteditable]:not([contenteditable="false"])'),
         onSpans(next) {
+          const ok = (s: RestoredSpan) => s.kind === 'restored' || s.kind === 'view';
           setRestoreHighlights(
-            next.filter((s) => s.kind === 'restored').map((s) => s.range),
-            next.filter((s) => s.kind !== 'restored').map((s) => s.range),
+            next.filter(ok).map((s) => s.range),
+            next.filter((s) => !ok(s)).map((s) => s.range),
           );
           setSpans(next);
         },

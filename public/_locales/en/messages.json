@@ -30,6 +30,7 @@
 
   "restore_hover": { "message": "Put back on your device. $SITE$ saw $PLACEHOLDER$.", "placeholders": { "site": { "content": "$1" }, "placeholder": { "content": "$2" } } },
   "restore_failed": { "message": "$SITE$ changed this placeholder, so MIRAGE couldn't put the detail back.", "placeholders": { "site": { "content": "$1" } } },
+  "restore_view": { "message": "$SITE$ saw $PLACEHOLDER$. Your detail: $VALUE$", "placeholders": { "site": { "content": "$1" }, "placeholder": { "content": "$2" }, "value": { "content": "$3" } } },
   "restore_expired": { "message": "Details cleared after 24 hours." },
   "restore_copy": { "message": "Copy with details" },
 

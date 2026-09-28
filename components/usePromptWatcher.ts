@@ -6,7 +6,7 @@ import { browser } from 'wxt/browser';
 import { detect } from '@/lib/detector/detect';
 import { isSecretType, type DetectSettings, type Finding, type MaskType } from '@/lib/detector/types';
 import { sendMessage } from '@/lib/messages';
-import { currentChatId } from '@/lib/page/chatId';
+import { currentChatId, resolveChatId } from '@/lib/page/chatId';
 import { clearHighlights, setHighlights } from '@/lib/page/highlights';
 import { readPrompt } from '@/lib/page/promptText';
 import { findComposer, findPromptBox, type SiteConfig } from '@/lib/sites';
@@ -94,6 +94,8 @@ export function usePromptWatcher(site: SiteConfig) {
   useEffect(() => {
     let lastSeen = Date.now();
     const poll = () => {
+      // A new chat's values were saved under a temporary id: move them as soon as the URL has a real one.
+      void resolveChatId(site);
       const found = findPromptBox(site);
       if (found) lastSeen = Date.now();
       if (found !== boxRef.current) setBox(found);

@@ -10,18 +10,27 @@ import type { SiteConfig } from '../sites';
 import { TOKEN_PATTERN, findTokens } from '../tokenizer';
 import { resolveChatId } from './chatId';
 
-export type RestoreKind = 'restored' | 'failed' | 'expired';
+/**
+ * restored: the value was written back into the text.
+ * view: the placeholder sits in an editable box (like ChatGPT's email card). Writing the value
+ *   there could let the site save it, so the text stays as is and the value shows on hover only.
+ * failed: the AI changed the placeholder. expired: the chat's values were cleared.
+ */
+export type RestoreKind = 'restored' | 'view' | 'failed' | 'expired';
 
 export interface RestoredSpan {
   range: Range;
   token: string;
   kind: RestoreKind;
+  value?: string; // only for 'view', shown in the hover tooltip
 }
 
 export interface RestorerOptions {
   site: SiteConfig;
-  /** Text nodes to leave alone, e.g. inside the prompt box. */
+  /** Text nodes to leave alone completely, e.g. inside the prompt box. */
   isExcluded(node: Text): boolean;
+  /** Text nodes the user or site can edit: never written to, values shown on hover only. */
+  isEditable(node: Text): boolean;
   onSpans(spans: RestoredSpan[]): void;
   onFailures(count: number): void;
 }
@@ -29,7 +38,7 @@ export interface RestorerOptions {
 const SKIP_PARENTS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT']);
 const BATCH_MS = 60;
 
-export function startRestorer({ site, isExcluded, onSpans, onFailures }: RestorerOptions): () => void {
+export function startRestorer({ site, isExcluded, isEditable, onSpans, onFailures }: RestorerOptions): () => void {
   const values = new Map<string, Map<string, string>>(); // chatId -> token -> value (page memory only)
   const written = new WeakMap<Text, string>(); // text MIRAGE last wrote into a node
   const spans = new Map<Text, RestoredSpan[]>();
@@ -82,7 +91,8 @@ export function startRestorer({ site, isExcluded, onSpans, onFailures }: Restore
     let newFailures = 0;
     for (const node of nodes) {
       if (!wanted(node)) continue;
-      const nodeSpans: { start: number; end: number; token: string; kind: RestoreKind }[] = [];
+      const editable = isEditable(node);
+      const nodeSpans: { start: number; end: number; token: string; kind: RestoreKind; value?: string }[] = [];
       let out = '';
       let last = 0;
       for (const m of node.data.matchAll(TOKEN_PATTERN)) {
@@ -91,7 +101,10 @@ export function startRestorer({ site, isExcluded, onSpans, onFailures }: Restore
         out += node.data.slice(last, index);
         const value = known.get(token);
         const start = out.length;
-        if (value !== undefined) {
+        if (value !== undefined && editable) {
+          out += token;
+          nodeSpans.push({ start, end: out.length, token, kind: 'view', value });
+        } else if (value !== undefined) {
           out += value;
           nodeSpans.push({ start, end: out.length, token, kind: 'restored' });
         } else {
@@ -106,15 +119,15 @@ export function startRestorer({ site, isExcluded, onSpans, onFailures }: Restore
       }
       out += node.data.slice(last);
 
-      if (out !== node.data) node.data = out;
+      if (!editable && out !== node.data) node.data = out;
       written.set(node, node.data);
       spans.set(
         node,
-        nodeSpans.map(({ start, end, token, kind }) => {
+        nodeSpans.map(({ start, end, token, kind, value }) => {
           const range = document.createRange();
           range.setStart(node, start);
           range.setEnd(node, end);
-          return { range, token, kind };
+          return value === undefined ? { range, token, kind } : { range, token, kind, value };
         }),
       );
     }

@@ -49,6 +49,7 @@ function hoverText(finding: Finding, token: string | null): string {
 
 function restoreText(span: RestoredSpan, siteName: string): string {
   if (span.kind === 'restored') return t('restore_hover', [siteName, span.token]);
+  if (span.kind === 'view') return t('restore_view', [siteName, span.token, span.value ?? '']);
   if (span.kind === 'expired') return t('restore_expired');
   return t('restore_failed', [siteName]);
 }
