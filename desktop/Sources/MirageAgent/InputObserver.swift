@@ -11,7 +11,9 @@ public final class InputObserver {
     private var pid: pid_t = 0
     private var debounce: DispatchWorkItem?
     public var onChange: (() -> Void)?
-    private static let debounceSeconds = 0.4
+    /// When the app last reported a change (for the timings in gate.log).
+    public private(set) var lastChangeAt: CFAbsoluteTime = 0
+    private static let debounceSeconds = 0.12
 
     public init() {}
 
@@ -41,6 +43,7 @@ public final class InputObserver {
     }
 
     private func changed() {
+        lastChangeAt = CFAbsoluteTimeGetCurrent()
         debounce?.cancel()
         let work = DispatchWorkItem { [weak self] in MainActor.assumeIsolated { self?.onChange?() } }
         debounce = work

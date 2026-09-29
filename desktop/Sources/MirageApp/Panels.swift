@@ -6,10 +6,32 @@ import Combine
 import MirageAgent
 import SwiftUI
 
+/// Takes the first click even when its window isn't key: the review opened while typing never
+/// takes the keyboard, and without this the first click on Protect & Send only focused the panel.
+final class FirstClickHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 final class FloatingPanel: NSPanel {
     var allowsKey = true
     override var canBecomeKey: Bool { allowsKey }
     override var canBecomeMain: Bool { false }
+
+    /// A panel shown without the keyboard (the review opened while typing) takes it when the user
+    /// clicks it, then handles that same click: buttons in a non-key panel ignored clicks (the
+    /// first click on Protect & Send did nothing; measured).
+    static var trace: ((String) -> Void)?
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .leftMouseDown || event.type == .leftMouseUp {
+            FloatingPanel.trace?(String(format: "panel-%@ key=%@ lag=%.0fms", event.type == .leftMouseDown ? "down" : "up", isKeyWindow ? "yes" : "no",
+                                        (ProcessInfo.processInfo.systemUptime - event.timestamp) * 1000))
+        }
+        if event.type == .leftMouseDown, !isKeyWindow, !ignoresMouseEvents {
+            allowsKey = true
+            makeKey()
+        }
+        super.sendEvent(event)
+    }
 }
 
 @MainActor
@@ -24,6 +46,7 @@ final class PanelPresenter {
 
     init(controller: ProtectionController) {
         self.controller = controller
+        FloatingPanel.trace = { [weak controller] in controller?.trace($0) }
         controller.isDecisionPanelKey = { [weak self] in self?.decisionPanel?.isKeyWindow == true }
         controller.isOnMirageWindow = { axPoint in
             // AX points are top-left based; AppKit frames bottom-left.
@@ -77,7 +100,7 @@ final class PanelPresenter {
         // the content changes (e.g. Review expanding): never a zero-size panel.
         // A hosting VIEW with automatic sizing off: MIRAGE sets the size. (A hosting controller kept
         // resetting the panel to 0 × 0: shown but invisible. Seen live.)
-        let host = NSHostingView(rootView: view)
+        let host = FirstClickHostingView(rootView: view)
         host.sizingOptions = []
         panel.contentView = host
         let size = Self.measure(host, width: nil)

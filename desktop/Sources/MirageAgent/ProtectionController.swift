@@ -144,7 +144,9 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
     /// Reason codes of the gate's decisions, appended to ~/Library/Logs/MIRAGE/gate.log: codes and
     /// times only (never text), so a failed attempt can be explained.
     public func trace(_ code: String) {
-        let line = "\(ISO8601DateFormatter().string(from: Date())) \(code)\n"
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let line = "\(f.string(from: Date())) \(code)\n"
         axQueue.async {
             let dir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0].appendingPathComponent("Logs/MIRAGE", isDirectory: true)
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -449,6 +451,7 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
 
     public func protectAndSend() {
         guard var d = decision, let core, let input = d.input, let adapter = adapter(for: d.app), d.stage != .working else { return }
+        trace("protect-start")
         d.stage = .working
         decision = d
         // The panel keeps showing (with a spinner) but gives keyboard focus back to the app:
@@ -553,6 +556,7 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
     /// amber or red), once typing pauses, not only on Enter. While it is open every Return and
     /// Send click is held, so nothing leaves until the user chooses. It opens once per set of
     /// details: after Cancel it comes back only for something new (or a click on the badge).
+    private var refreshTiming = ""
     private var earlyShown: Set<String> = [] // in memory only, never logged
     private var earlyTimer: DispatchWorkItem?
     private var earlyLatest: (input: AXElement, text: String, analysis: Analysis)?
@@ -573,15 +577,11 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
         guard settings.reviewWhileTyping else { return }
         let keys = Set(analysis.actionable.map { $0.type + "\u{1}" + $0.value })
         guard !keys.isSubset(of: earlyShown) else { return }
-        let work = DispatchWorkItem { [weak self] in
-            MainActor.assumeIsolated {
-                guard let self, self.lastLiveText == text else { return }
-                self.earlyShown.formUnion(keys)
-                self.openReview(front: front, input: input, text: text, analysis: analysis, reason: "early-review")
-            }
-        }
-        earlyTimer = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: work)
+        // At once: this runs 0.12 s after the last change (measured: the old extra 0.3 s wait
+        // plus a 0.4 s pause made the popup open 0.75 s after typing).
+        guard lastLiveText == text else { return }
+        earlyShown.formUnion(keys)
+        openReview(front: front, input: input, text: text, analysis: analysis, reason: "early-review")
     }
 
     /// Opens the review for what is in the prompt box now (the badge's click).
@@ -592,7 +592,7 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
 
     private func openReview(front: (adapter: DesktopAIAdapter, pid: pid_t, app: AXElement), input: AXElement, text: String, analysis: Analysis, reason: String, early: Bool = true) {
         guard decision == nil, !checking, self.front?.pid == front.pid else { return }
-        trace("\(reason) items=\(analysis.actionable.count)")
+        trace("\(reason) items=\(analysis.actionable.count) \(refreshTiming) opened+\(Int((CFAbsoluteTimeGetCurrent() - inputObserver.lastChangeAt) * 1000))ms-after-typing")
         lastHoldAt = CFAbsoluteTimeGetCurrent()
         // Nothing was submitted: the user hasn't sent, and sends are held while the panel is open.
         decision = Decision(app: front.adapter.id, appName: front.adapter.displayName, analysis: analysis, heldSubmission: true, unreadable: false, early: early, original: text, appElement: front.app, input: input)
@@ -601,7 +601,9 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
     private func refreshLiveRisk() {
         guard let front, let core else { liveRisk = .safe; live = nil; return }
         let settings = settings
+        let queuedAt = CFAbsoluteTimeGetCurrent()
         axQueue.async { [weak self] in
+            let startedAt = CFAbsoluteTimeGetCurrent()
             guard let input = front.adapter.inputElement(app: front.app), let text = front.adapter.readInput(input) else {
                 DispatchQueue.main.async { MainActor.assumeIsolated { self?.liveRisk = .safe; self?.live = nil } }
                 return
@@ -613,6 +615,7 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
                 return AX.frame(w as! AXElement)
             }()
             let analysis = try? core.analyze(text, settings: settings.detection, policy: settings.policy)
+            let doneAt = CFAbsoluteTimeGetCurrent()
             let marks: [LiveMarks.Mark] = [] // no underlines (by request); cheap refresh only
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
@@ -632,6 +635,7 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
                     } else {
                         self.live = nil
                     }
+                    self.refreshTiming = String(format: "sinceChange=%.0f wait=%.0f read=%.0f", (CFAbsoluteTimeGetCurrent() - self.inputObserver.lastChangeAt) * 1000, (startedAt - queuedAt) * 1000, (doneAt - startedAt) * 1000)
                     self.scheduleEarlyReview(front: front, input: input, text: text, analysis: analysis)
                 }
             }

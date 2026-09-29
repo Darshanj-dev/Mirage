@@ -346,6 +346,9 @@ extension EndToEnd {
         let h = NSScreen.screens.first?.frame.height ?? 0
         out.append("popup at \(line.dropFirst(14)) (on screen: \(f[1] >= 0 && f[1] + f[3] <= h))")
         hidClick(CGPoint(x: f[0] + f[2] - 18 - 55, y: h - (f[1] + 18 + 12)))
+        let clickFormat = ISO8601DateFormatter()
+        clickFormat.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        out.append("clicked Protect & Send at \(clickFormat.string(from: Date()))")
         Thread.sleep(forTimeInterval: 6)
         let after = adapter.readInput(input) ?? ""
         let texts = conversationText(app: app, excluding: input)
