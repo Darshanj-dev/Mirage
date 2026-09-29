@@ -306,7 +306,7 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
         let settings = settings
         let lastKnownInput = lastInput?.element
         gateQueue.async { [weak self] in
-            enum Verdict { case pass, decide(Analysis, String, AXElement), unreadable(AXElement?) }
+            enum Verdict { case pass(Int), decide(Analysis, String, AXElement), unreadable(AXElement?) }
             let verdict: Verdict = {
                 var input: AXElement?
                 switch trigger {
@@ -323,12 +323,12 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
                         if front.adapter.isSendControl(e) { isSend = true; break }
                         el = AX.parent(e)
                     }
-                    guard isSend else { return .pass }
+                    guard isSend else { return .pass(-1) }
                     input = front.adapter.inputElement(app: front.app) ?? lastKnownInput
                 }
                 guard let input, let text = front.adapter.readInput(input) else { return .unreadable(input) }
                 guard let analysis = try? core.analyze(text, settings: settings.detection, policy: settings.policy) else { return .unreadable(input) }
-                return analysis.actionable.isEmpty ? .pass : .decide(analysis, text, input)
+                return analysis.actionable.isEmpty ? .pass(text.count) : .decide(analysis, text, input)
             }()
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
@@ -337,9 +337,9 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
                     self.lastCheckMs = (CFAbsoluteTimeGetCurrent() - self.lastHoldAt) * 1000
                     var delta = Counts()
                     switch verdict {
-                    case .pass:
+                    case .pass(let length):
                         self.lastGateReason = "clean"
-                        self.trace("checked-clean-resent")
+                        self.trace(length < 0 ? "click-not-send-resent" : "checked-clean-resent chars=\(length)")
                         delta.checked = 1
                         self.record(delta, app: front.adapter.id)
                         self.replay(trigger, pid: front.pid)

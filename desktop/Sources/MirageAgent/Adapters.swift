@@ -64,18 +64,42 @@ open class TextAreaAdapter: DesktopAIAdapter {
         AX.role(element) == kAXTextAreaRole && AX.isSettable(element, kAXValueAttribute)
     }
 
+    /// Any editable text box: a settable text area or text field.
+    public static func isEditable(_ el: AXElement) -> Bool {
+        let role = AX.role(el)
+        return (role == kAXTextAreaRole || role == kAXTextFieldRole) && AX.isSettable(el, kAXValueAttribute)
+    }
+
+    /// The box the user is typing in: the focused element, or the editable box it sits inside
+    /// (apps sometimes report focus on a part of the box). Any editable box counts, whatever its
+    /// label: the label differs between app views ("Do anything", "Ask anything", "Message …"),
+    /// and a label mismatch once made MIRAGE check an empty box and let a send through.
+    open func focusedBox(app: AXElement) -> AXElement? {
+        guard var el = AX.focusedElement(of: app) else { return nil }
+        for _ in 0..<8 {
+            if isInput(el) || Self.isEditable(el) { return el }
+            guard let up = AX.parent(el) else { return nil }
+            el = up
+        }
+        return nil
+    }
+
     open func inputElement(app: AXElement) -> AXElement? {
-        if let focused = AX.focusedElement(of: app), isInput(focused) { return focused }
+        if let box = focusedBox(app: app) { return box }
         // Some apps (Electron) list windows only under AXWindows, not as children: search the
         // focused window first, then the rest. Bounded, so a long chat can't stall the search.
         var windows = AX.windows(app)
         if let fw: CFTypeRef = AX.attribute(app, kAXFocusedWindowAttribute), CFGetTypeID(fw) == AXUIElementGetTypeID() {
             windows.insert(fw as! AXElement, at: 0)
         }
+        var empty: AXElement?
         for w in windows {
-            if let hit = AX.find(in: w, maxDepth: 45, maxNodes: 12000, where: { self.isInput($0) }) { return hit }
+            for hit in AX.findAll(in: w, maxDepth: 45, maxNodes: 12000, where: { self.isInput($0) || Self.isEditable($0) }) {
+                if !normalizedPromptText(readInput(hit) ?? "").isEmpty && !isPlaceholderOnly(hit) { return hit }
+                empty = empty ?? hit
+            }
         }
-        return nil
+        return empty
     }
 
     open func isSendControl(_ element: AXElement) -> Bool { false }
@@ -93,6 +117,12 @@ open class TextAreaAdapter: DesktopAIAdapter {
     }
 
     open func readInput(_ input: AXElement) -> String? { AX.value(input) }
+
+    /// An empty box can report its placeholder as its value ("Do anything").
+    func isPlaceholderOnly(_ el: AXElement) -> Bool {
+        let v = normalizedPromptText(readInput(el) ?? "")
+        return !v.isEmpty && [AX.placeholder(el), AX.title(el), AX.descriptionText(el)].compactMap { $0 }.contains { normalizedPromptText($0) == v }
+    }
 
     /// Reports whether the box shows `want`, waiting for the app to catch up.
     /// Apps process typed text at their own pace (ChatGPT on a long prompt: a few hundred
