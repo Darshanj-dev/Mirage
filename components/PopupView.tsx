@@ -8,6 +8,22 @@ import { t } from '@/lib/strings';
 import { SHIELD_PATH, Switch } from './Controls';
 import { usePopupState } from './usePopupState';
 
+/** Opens Private Compose: Chrome's side panel, Firefox's sidebar. */
+async function openCompose(): Promise<void> {
+  try {
+    const win = await browser.windows.getCurrent();
+    const api = browser as unknown as {
+      sidePanel?: { open(o: { windowId: number }): Promise<void> };
+      sidebarAction?: { open(): Promise<void> };
+    };
+    if (api.sidePanel && win.id !== undefined) await api.sidePanel.open({ windowId: win.id });
+    else await api.sidebarAction?.open();
+    window.close();
+  } catch {
+    // unsupported browser: nothing to open
+  }
+}
+
 export function PopupView() {
   const popup = usePopupState();
   const { state } = popup;
@@ -106,6 +122,10 @@ export function PopupView() {
         <span className="local__dot" aria-hidden="true" />
         {t('popup_local')}
       </p>
+
+      <button type="button" className="btn btn--wide btn--primary" title={t('compose_openHint')} onClick={() => void openCompose()}>
+        {t('compose_open')}
+      </button>
 
       <footer className="footer">
         <button type="button" className="btn btn--wide" onClick={() => void browser.runtime.openOptionsPage()}>

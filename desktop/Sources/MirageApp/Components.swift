@@ -108,7 +108,7 @@ enum Names {
     }
     static let types: [String: String] = [
         "AADHAAR": "Aadhaar number", "PAN": "PAN", "PHONE": "Phone number", "EMAIL": "Email", "UPI": "UPI ID", "IFSC": "IFSC code",
-        "BANK_ACCOUNT": "Bank account", "IP_ADDRESS": "IP address", "DOB": "Date of birth", "NAME": "Name", "CUSTOM": "Always-hide term",
+        "BANK_ACCOUNT": "Bank account", "ADDRESS": "Address", "PASSPORT": "Passport number", "IP_ADDRESS": "IP address", "DOB": "Date of birth", "NAME": "Name", "CUSTOM": "Always-hide term",
         "HEALTH": "Health detail", "CARD": "Card number", "API_KEY": "API key", "PRIVATE_KEY": "Private key", "PASSWORD": "Password", "OTP": "One-time code",
     ]
     static let kinds: [String: String] = [

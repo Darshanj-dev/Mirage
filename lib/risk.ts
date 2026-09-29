@@ -32,8 +32,8 @@ export interface Risk {
   worst: Severity | null;
 }
 
-const IDENTIFYING: readonly FindingType[] = ['NAME', 'CUSTOM', 'AADHAAR', 'PAN', 'PHONE', 'EMAIL', 'DOB', 'BANK_ACCOUNT', 'UPI'];
-const GOVERNMENT_ID: readonly FindingType[] = ['AADHAAR', 'PAN'];
+const IDENTIFYING: readonly FindingType[] = ['NAME', 'CUSTOM', 'AADHAAR', 'PAN', 'PASSPORT', 'ADDRESS', 'PHONE', 'EMAIL', 'DOB', 'BANK_ACCOUNT', 'UPI'];
+const GOVERNMENT_ID: readonly FindingType[] = ['AADHAAR', 'PAN', 'PASSPORT'];
 const CONTACT: readonly FindingType[] = ['PHONE', 'EMAIL'];
 
 const SEVERITY_RANK: Record<Severity, number> = { low: 0, medium: 1, high: 2, critical: 3 };

@@ -20,6 +20,8 @@ export type MaskType =
   | 'BANK_ACCOUNT'
   | 'IP_ADDRESS'
   | 'DOB'
+  | 'ADDRESS'
+  | 'PASSPORT'
   | 'NAME'
   | 'CUSTOM';
 
@@ -125,6 +127,8 @@ export const MASK_TYPES: readonly MaskType[] = [
   'BANK_ACCOUNT',
   'IP_ADDRESS',
   'DOB',
+  'ADDRESS',
+  'PASSPORT',
   'NAME',
   'CUSTOM',
 ];

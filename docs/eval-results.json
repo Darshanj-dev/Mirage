@@ -64,8 +64,8 @@
   "cleanFlagged": [],
   "latency": {
     "meanMs": 0.05,
-    "p95Ms": 0.06,
-    "prompt2kMs": 1.8,
-    "prompt20kMs": 8.06
+    "p95Ms": 0.07,
+    "prompt2kMs": 1.94,
+    "prompt20kMs": 8.83
   }
 }

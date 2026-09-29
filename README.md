@@ -36,6 +36,11 @@ WITH MIRAGE      Aadhaar · PAN · API key ─▶ MIRAGE (in your browser)
                                    «AADHAAR_1» «PAN_1» «API_KEY_REMOVED» ─▶ AI provider
 ```
 
+## Two ways to use it
+
+- **Private Compose** (strongest): click MIRAGE → *Private Compose*, write your prompt in MIRAGE's side panel, and insert only the protected version into the chatbot. The chatbot's page never sees your raw text. Verified live on ChatGPT and Gemini: 0 raw values in the page, 0 in requests.
+- **Automatic** (convenient): type in the chatbot as usual; MIRAGE stops the send when it finds something and lets you protect it first. The chatbot's own page can see what you type in its box before you press Send.
+
 ## How it works
 
 1. **Type** a prompt as usual.

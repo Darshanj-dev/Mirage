@@ -159,5 +159,54 @@ export const healthRule: Rule = {
   },
 };
 
+/**
+ * Passport numbers (Indian format: one letter, 7 digits, e.g. K1234567), only next to the word
+ * "passport": the shape alone is too common (order and ticket numbers).
+ */
+export const passportRule: Rule = {
+  type: 'PASSPORT',
+  policy: 'mask',
+  confidence: 0.9,
+  reason: 'context',
+  find: (text) =>
+    matchAll(text, /(?<![A-Za-z0-9])([A-PR-WYa-pr-wy][1-9]\d\s?\d{4}[1-9])(?![A-Za-z0-9])/g, 1).filter((m) =>
+      /\bpassport\b[^\n]{0,25}$/i.test(text.slice(Math.max(0, m.start - 60), m.start)),
+    ),
+};
+
+const ADDRESS_WORDS = String.raw`(?:road|rd|street|st|nagar|layout|cross|main|sector|colony|lane|marg|block|phase|stage|apartments?|apts?|flat|floor|house|villa|society|towers?|residency|enclave|extension|extn|avenue|ave|circle|halli|palya|puram|pet|gunta|chowk|bazaar|gali)`;
+const PIN = String.raw`[1-9]\d{2}\s?\d{3}`;
+
+/**
+ * Postal addresses: text ending in a 6-digit Indian PIN code that contains street-like words
+ * ("3rd Cross, Indiranagar, Bengaluru 560038"), or anything after "address:" up to a PIN code.
+ */
+export const addressRule: Rule = {
+  type: 'ADDRESS',
+  policy: 'mask',
+  confidence: 0.85,
+  reason: 'pattern',
+  find: (text) => {
+    const labelled = matchAll(
+      text,
+      new RegExp(String.raw`\b(?:(?:my|home|office|delivery|postal|permanent|current|billing|shipping)\s+)?address(?:\s+is)?\s*[:\-]?\s*([^\n]{6,160}?\b${PIN})(?!\d)`, 'gi'),
+      1,
+    ).map((m) => ({ ...m, confidence: 0.92, reason: 'context' as const }));
+    const street = matchAll(
+      text,
+      new RegExp(String.raw`(?<![\w])(?:#\s*)?(?:\d{1,4}[A-Za-z]?(?:[/-]\d{1,4})?,?\s+)?[^\n]{0,80}?\b${ADDRESS_WORDS}\b[^\n]{0,100}?\b${PIN}(?!\d)`, 'gi'),
+    )
+      .map((m) => {
+        // Start at the house number (or "#12"), else the first capital word — not mid-sentence.
+        const lead = /(?:#\s*)?\d/.exec(m.value) ?? /\b[A-Z]/.exec(m.value);
+        const cut = lead ? lead.index : 0;
+        return { start: m.start + cut, end: m.end, value: m.value.slice(cut) };
+      })
+      // Real addresses have comma-separated parts; "the road to 560038" does not.
+      .filter((m) => m.value.includes(',') && m.value.length >= 15);
+    return [...labelled, ...street.filter((s) => !labelled.some((l) => s.start < l.end && l.start < s.end))];
+  },
+};
+
 /** Context rules, lowest priority: an ID or secret always wins an overlap with them. */
-export const CONTEXT_RULES: readonly Rule[] = [bankAccountRule, dobRule, ipRule, nameRule, healthRule];
+export const CONTEXT_RULES: readonly Rule[] = [bankAccountRule, passportRule, addressRule, dobRule, ipRule, nameRule, healthRule];

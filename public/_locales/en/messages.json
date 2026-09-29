@@ -810,5 +810,85 @@
   },
   "settings_data": {
     "message": "Saved details"
+  },
+  "compose_title": {
+    "message": "Private Compose"
+  },
+  "compose_lead": {
+    "message": "Write here. The chatbot's page never sees this text: MIRAGE inserts only the protected version, and you press Send."
+  },
+  "compose_placeholder": {
+    "message": "Write or paste your prompt"
+  },
+  "compose_target": {
+    "message": "Inserts into $SITE$",
+    "placeholders": {
+      "site": {
+        "content": "$1"
+      }
+    }
+  },
+  "compose_noTarget": {
+    "message": "Open ChatGPT, Gemini, Claude, Copilot or Perplexity in this window to insert."
+  },
+  "compose_insert": {
+    "message": "Insert protected"
+  },
+  "compose_insertClean": {
+    "message": "Insert"
+  },
+  "compose_clear": {
+    "message": "Clear"
+  },
+  "compose_inserted": {
+    "message": "Inserted into $SITE$. Check it there and press Send.",
+    "placeholders": {
+      "site": {
+        "content": "$1"
+      }
+    }
+  },
+  "compose_failed": {
+    "message": "MIRAGE couldn't insert it. Click in the chatbot's message box and try again."
+  },
+  "compose_empty": {
+    "message": "Nothing sensitive found yet."
+  },
+  "compose_found": {
+    "message": "$N$ items will be hidden or removed",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "compose_found_one": {
+    "message": "1 item will be hidden or removed"
+  },
+  "compose_preview": {
+    "message": "What $SITE$ will see",
+    "placeholders": {
+      "site": {
+        "content": "$1"
+      }
+    }
+  },
+  "compose_why": {
+    "message": "Why this is stronger: in normal mode you type inside the chatbot's page, which can read your text before MIRAGE checks it. Here the page only ever receives the protected text."
+  },
+  "compose_open": {
+    "message": "Private Compose"
+  },
+  "compose_openHint": {
+    "message": "Write in MIRAGE, insert only the protected text"
+  },
+  "type_ADDRESS": {
+    "message": "Address"
+  },
+  "type_PASSPORT": {
+    "message": "Passport number"
+  },
+  "article_PASSPORT": {
+    "message": "a passport number"
   }
 }
