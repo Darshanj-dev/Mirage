@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finish installing MIRAGE</title>
+<style>
+  :root { --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --paper:#fff; --sunk:#f8fafc; --blue:#2563eb; --green:#16a34a; color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) { :root { --ink:#e5e7eb; --muted:#9ca3af; --line:#2a2d33; --paper:#151619; --sunk:#1c1e22; --blue:#60a5fa; --green:#4ade80; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:15px/1.55 "Segoe UI", system-ui, sans-serif; }
+  main { max-width:720px; margin:0 auto; padding:40px 20px 64px; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.08em; }
+  .brand svg path { fill:var(--blue); }
+  h1 { font-size:26px; margin:18px 0 6px; letter-spacing:-.01em; }
+  .lead { color:var(--muted); margin:0 0 28px; }
+  ol { list-style:none; margin:0; padding:0; counter-reset:s; }
+  li { counter-increment:s; display:grid; grid-template-columns:36px 1fr; gap:14px; padding:18px 0; border-top:1px solid var(--line); }
+  li::before { content:counter(s); width:32px; height:32px; border-radius:8px; display:grid; place-items:center; background:var(--sunk); border:1px solid var(--line); font-weight:600; }
+  li strong { display:block; margin-bottom:4px; }
+  code, .path { font-family:ui-monospace, Consolas, monospace; font-size:13.5px; }
+  .path { display:flex; gap:8px; align-items:center; margin-top:8px; padding:10px 12px; background:var(--sunk); border:1px solid var(--line); border-radius:8px; overflow-wrap:anywhere; }
+  button { flex:none; padding:7px 12px; border:0; border-radius:6px; background:#2563eb; color:#fff; font:600 13px "Segoe UI", system-ui; cursor:pointer; }
+  button:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+  .ok { color:var(--green); font-size:13px; margin-left:6px; }
+  .note { margin-top:28px; padding:14px 16px; border:1px solid var(--line); border-radius:10px; color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 2.5 4 5.5v6c0 5 3.4 8.9 8 10 4.6-1.1 8-5 8-10v-6l-8-3Z"/></svg>MIRAGE</div>
+  <h1>One last step in your browser</h1>
+  <p class="lead">MIRAGE is installed on this computer. Chrome and Edge run extensions from outside their stores only after you allow it once.</p>
+  <ol>
+    <li><div><strong>Open the extensions page</strong>Type <code>chrome://extensions</code> in Chrome's address bar (or <code>edge://extensions</code> in Edge) and press Enter.</div></li>
+    <li><div><strong>Turn on Developer mode</strong>The switch is at the top right in Chrome, and on the left in Edge.</div></li>
+    <li><div><strong>Click “Load unpacked” and choose this folder</strong>
+      <div class="path"><span id="path">%LOCALAPPDATA%\MIRAGE\chrome-extension\extension</span><button id="copy" type="button">Copy</button><span id="ok" class="ok" hidden>Copied</span></div>
+      Paste it into the folder picker's address bar, then click “Select Folder”.</div></li>
+    <li><div><strong>Pin MIRAGE</strong>Open the puzzle-piece menu next to the address bar and pin MIRAGE, so you can see it is on. Then open ChatGPT or Gemini and try it.</div></li>
+  </ol>
+  <div class="note">
+    <b>Updating:</b> run the newer installer, then click the reload arrow on MIRAGE in the extensions page.<br>
+    <b>Uninstalling:</b> click “Remove” on MIRAGE in the extensions page, then “Uninstall MIRAGE” in the Start menu.<br>
+    <b>Privacy:</b> every check runs in your browser. MIRAGE has no server and sends nothing anywhere.
+  </div>
+</main>
+<script>
+  // The extension folder sits next to this page: show its real path.
+  try {
+    var here = decodeURIComponent(location.pathname).replace(/^\/([A-Za-z]:)/, '$1').replace(/\//g, '\\');
+    var dir = here.slice(0, here.lastIndexOf('\\'));
+    if (/^[A-Za-z]:\\/.test(dir)) document.getElementById('path').textContent = dir + '\\extension';
+  } catch (e) {}
+  document.getElementById('copy').addEventListener('click', function () {
+    var text = document.getElementById('path').textContent;
+    var done = function () { var ok = document.getElementById('ok'); ok.hidden = false; setTimeout(function () { ok.hidden = true; }, 2000); };
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () { fallback(text); done(); });
+    else { fallback(text); done(); }
+  });
+  function fallback(text) {
+    var t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    t.remove();
+  }
+</script>
+</body>
+</html>

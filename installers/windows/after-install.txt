@@ -1,0 +1,15 @@
+One last step in your browser
+=============================
+
+Chrome and Edge only run extensions from outside their stores after you allow it once:
+
+1. Open chrome://extensions (Chrome) or edge://extensions (Edge).
+2. Turn on "Developer mode".
+3. Click "Load unpacked" and choose this folder:
+   %LOCALAPPDATA%\MIRAGE\chrome-extension\extension
+4. Pin MIRAGE from the puzzle-piece menu so you can see it is on.
+
+The guide that opens next shows these steps with a button to copy the folder path.
+
+To update: run the newer installer, then click the reload arrow on MIRAGE in chrome://extensions.
+To uninstall: remove MIRAGE in chrome://extensions, then use "Uninstall MIRAGE" in the Start menu.

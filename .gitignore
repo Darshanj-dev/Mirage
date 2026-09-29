@@ -31,3 +31,8 @@ web-ext.config.ts
 # Original specs (Markdown copies live in docs/)
 *.docx
 e2e/results/
+desktop/build/
+desktop/.build/
+dist/
+# Unfinished CLI draft, kept locally
+cli/

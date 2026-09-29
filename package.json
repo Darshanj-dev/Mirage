@@ -2,7 +2,7 @@
   "name": "mirage",
   "description": "Hides your personal details and blocks secrets before you send a prompt to ChatGPT or Gemini.",
   "private": true,
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "postinstall": "wxt prepare",
     "e2e": "node e2e/live.mjs",
-    "eval": "vitest run lib/detector/eval.test.ts"
+    "eval": "vitest run lib/detector/eval.test.ts",
+    "build:core": "vite build --config vite.core.config.ts"
   },
   "dependencies": {
     "react": "^19.2.4",

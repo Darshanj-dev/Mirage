@@ -30,7 +30,7 @@ export interface ReviewState {
   keep: ReadonlySet<number>;
 }
 
-export type Panel = ReviewState | { kind: 'error' } | { kind: 'confirmRaw'; back: ReviewState } | { kind: 'confirmSecret'; back: ReviewState };
+export type FlowPanel = ReviewState | { kind: 'error' } | { kind: 'confirmRaw'; back: ReviewState } | { kind: 'confirmSecret'; back: ReviewState };
 
 const QUICK_CHIP_MS = 2000;
 
@@ -70,7 +70,7 @@ export function useSendFlow(
   settingsRef: MutableRefObject<PageSettings | null>,
   loadSettings: () => Promise<PageSettings | null>,
 ) {
-  const [panel, setPanel] = useState<Panel | null>(null);
+  const [panel, setPanel] = useState<FlowPanel | null>(null);
   const [chip, setChip] = useState<number | null>(null);
   const busy = useRef(false);
   const boxRef = useRef<HTMLElement | null>(null);

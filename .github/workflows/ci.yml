@@ -1,0 +1,36 @@
+# Every push and pull request: typecheck, tests, detector evaluation, production build,
+# dependency audit (extension), and the macOS desktop companion's Swift tests.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npm run eval
+      - run: npm run build
+      - run: npm run build -- -b firefox
+      - name: Dependency audit (high and critical)
+        run: npm audit --audit-level=high --omit=dev
+
+  desktop-macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run build:core
+      - name: Swift tests
+        working-directory: desktop
+        run: swift test

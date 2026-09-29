@@ -1,0 +1,70 @@
+# Builds the downloads and attaches them to a GitHub Release.
+#   git tag v1.0.0 && git push --tags     (or run it by hand from the Actions tab)
+# Produces:
+#   MIRAGE-Chrome-Setup-<version>.exe   Windows installer for Chrome/Edge (built here, on Windows)
+#   mirage-<version>-chrome.zip         the extension for Chrome/Edge (Load unpacked)
+#   mirage-<version>-firefox.zip        the extension for Firefox
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup --no-progress -y; }
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          & $iscc "/DAppVersion=$version" installers\windows\mirage-chrome.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem dist
+      - uses: actions/upload-artifact@v4
+        with: { name: windows-installer, path: dist/*.exe }
+
+  extension-zips:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm test
+      - run: npm run zip
+      - run: npm run zip -- -b firefox
+      - uses: actions/upload-artifact@v4
+        with: { name: extension-zips, path: .output/*.zip }
+
+  publish:
+    needs: [windows-installer, extension-zips]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: downloads, merge-multiple: true }
+      - run: ls -la downloads
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create "$TAG" -R "$GITHUB_REPOSITORY" --title "MIRAGE $TAG" --notes-file /dev/null --target "$GITHUB_SHA"
+          gh release upload "$TAG" downloads/* -R "$GITHUB_REPOSITORY" --clobber

@@ -1,5 +1,29 @@
 # MIRAGE: the AI privacy firewall
 
+[![CI](https://github.com/Darshanj-dev/Mirage/actions/workflows/ci.yml/badge.svg)](https://github.com/Darshanj-dev/Mirage/actions/workflows/ci.yml)
+
+## Download
+
+| | |
+|---|---|
+| **Windows — Chrome or Edge** | [**MIRAGE-Chrome-Setup.exe**](https://github.com/Darshanj-dev/Mirage/releases/latest) · run it, then follow the 4-step guide it opens (Chrome asks you to allow extensions from outside its store once: *Developer mode → Load unpacked*) |
+| Chrome / Edge on any OS | `mirage-*-chrome.zip` from [Releases](https://github.com/Darshanj-dev/Mirage/releases/latest) · unzip → `chrome://extensions` → Developer mode → Load unpacked |
+| Firefox | `mirage-*-firefox.zip` from [Releases](https://github.com/Darshanj-dev/Mirage/releases/latest) · `about:debugging` → Load Temporary Add-on |
+| macOS desktop app (ChatGPT / Claude apps) | Build from source: [`desktop/DEVELOPMENT.md`](desktop/DEVELOPMENT.md) |
+
+The Windows installer needs no administrator rights and is not code-signed yet, so Windows SmartScreen may say "Windows protected your PC": choose **More info → Run anyway**.
+
+## What's in this repository
+
+| Folder | What |
+|---|---|
+| `lib/`, `components/`, `entrypoints/` | The browser extension (WXT, TypeScript, React) |
+| `lib/detector/`, `lib/risk.ts`, `lib/core/` | **MIRAGE Core**: detection, risk score, masking — shared by the extension and the desktop app |
+| `desktop/` | macOS desktop companion for the ChatGPT and Claude apps (Swift) — [architecture](desktop/DESKTOP_ARCHITECTURE.md), [supported apps](desktop/SUPPORTED_APPS.md) |
+| `installers/windows/` | Windows installer for the extension (Inno Setup, built by GitHub Actions) |
+| `docs/` | [Audit report](docs/audit-report.md), [detection & risk score](docs/detection.md), [roadmap](docs/ROADMAP.md), product specs |
+| `test-prompts/`, `e2e/` | Detector evaluation corpus and live end-to-end checks |
+
 Checks every prompt **on your device** before it reaches ChatGPT, Gemini, Claude, Copilot or Perplexity. Personal details become placeholders like `«PAN_1»`, secrets like API keys are removed, and you decide before anything is sent. Real details come back in the reply, on your device.
 
 ```
