@@ -21,6 +21,20 @@ Driver: `MIRAGE --e2e`, fictional values (`AKIAQ7Z3MIRAGEDEMO42`, `BNZPM2501K`, 
 | Claude | Protect & Send final send | **not run** (would post into the development conversation) | | |
 | ChatGPT | Reply check | **not verified** (the app changed view during the run) | | |
 
+## Update 2026-09-29 (evening): user-reported failure and fixes
+
+A user sent a **long** prompt (13 items) in ChatGPT: it went out raw and MIRAGE's panel appeared afterwards. Cause: the check ran inside the event tap; reading a long prompt through Accessibility took long enough that macOS timed the tap out and **delivered the held Return**. Fixed by design, not by tuning:
+
+| Change | Result (live, ChatGPT 26.924, long 591-character prompt, fictional values) |
+|---|---|
+| **Hold first, check second**: the tap only reads cached state and holds; the check runs in the background; a clean prompt's Return/click is re-sent (marked) | Gate decision **0.04–0.06 ms**, background check 9–13 ms, panel 20–47 ms. Prompt still unsent when the panel shows ✅ |
+| Protected text is **pasted**, not typed key by key (typing dropped characters and Shift-Return could send line by line) | Long prompt Protect & Send: box replaced and verified, sent at ~1.5 s; newest message holds only placeholders (name, DOB, PAN, phone, 2 emails, address, AWS key, DB password) ✅ |
+| Verification waits for the app to catch up; compares words, not line-break encoding | ✅ |
+| **Private Compose for desktop** (menu bar or ⌥⌘M): write in MIRAGE, insert only the protected text | Box held the protected text with 0 raw values, then sent by a normal Return ✅ |
+| **Live badge and underlines** over the prompt box, like the extension | 9 of 9 findings underlined at their on-screen positions; badge "9 items will be hidden" ✅ |
+| Decision panel anchored right above the prompt box, long lists scroll | ✅ |
+| Names never run across a line break ("Rahul Sharma\nDate…") | test added ✅ |
+
 ## Bugs found by live testing (all fixed)
 1. Welcome window never appeared (menu-bar app, icon hidden by the notch; window on another Space).
 2. Accessibility grant lost on every rebuild (signature fell back to cdhash) → pinned requirement.

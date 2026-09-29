@@ -80,6 +80,7 @@ public struct Protection: Codable, Sendable {
     public let text: String
     public let hidden: Int
     public let removed: Int
+    public init(text: String, hidden: Int, removed: Int) { self.text = text; self.hidden = hidden; self.removed = removed }
 }
 
 public struct DetectionSettings: Codable, Sendable, Equatable {

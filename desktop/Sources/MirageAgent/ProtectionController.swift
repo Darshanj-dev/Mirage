@@ -46,6 +46,9 @@ public struct Decision {
     public let unreadable: Bool
     public var keep: Set<Int> = []
     public var stage: DecisionStage = .review
+    /// Opened while typing (not by a held send): the panel doesn't take the keyboard, and it
+    /// follows the prompt as the user keeps typing.
+    public var early = false
     fileprivate let original: String
     fileprivate let appElement: AXElement
     fileprivate let input: AXElement?
@@ -68,6 +71,24 @@ public struct ReplyAlert: Identifiable {
     public init(appName: String, analysis: Analysis) { self.appName = appName; self.analysis = analysis }
 }
 
+/// The live state of the prompt box, drawn over the AI app like the extension's badge and underlines.
+public struct LiveMarks: Equatable {
+    public enum Kind: Equatable { case personal, secret, warn }
+    public struct Mark: Equatable {
+        public let rect: CGRect
+        public let kind: Kind
+        public let name: String // the kind of detail, e.g. "PAN" (never the value)
+        public let sentAs: String? // «PAN_1», «AWS_ACCESS_KEY_REMOVED»; nil: kept as typed
+    }
+    public let box: CGRect
+    public let count: Int
+    public let level: RiskLevel
+    public let score: Int
+    public let hasSecret: Bool
+    public let names: [String]
+    public let marks: [Mark]
+}
+
 public struct Toast: Equatable {
     public let text: String
     public let success: Bool
@@ -80,6 +101,11 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
     @Published public private(set) var apps: [AppRow] = []
     @Published public var decision: Decision?
     @Published public private(set) var liveRisk: RiskLevel = .safe
+    /// What the prompt box shows right now, for the on-screen badge and underlines (like the
+    /// extension's). Rectangles are in screen coordinates (top-left origin). nil: nothing to show.
+    @Published public private(set) var live: LiveMarks?
+    /// The prompt box's position, for placing the decision panel right above it.
+    @Published public private(set) var promptBoxFrame: CGRect?
     @Published public var replyAlert: ReplyAlert?
     @Published public var toast: Toast?
     @Published public private(set) var coreStatus: String = "Starting"
@@ -110,6 +136,26 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
     /// against this rectangle: asking "what is under the mouse?" at click time is too slow in
     /// Electron apps (seen live: ChatGPT clicks passed unchecked).
     private var sendFrame: CGRect?
+    /// Where the prompt box is (clicks around it, not in it, may be on a send button not yet cached).
+    private var inputFrame: CGRect?
+    /// The protected app's front window (top-left origin), for the composer area.
+    private var windowFrame: CGRect?
+
+    /// Reason codes of the gate's decisions, appended to ~/Library/Logs/MIRAGE/gate.log: codes and
+    /// times only (never text), so a failed attempt can be explained.
+    public func trace(_ code: String) {
+        let line = "\(ISO8601DateFormatter().string(from: Date())) \(code)\n"
+        axQueue.async {
+            let dir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0].appendingPathComponent("Logs/MIRAGE", isDirectory: true)
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            let url = dir.appendingPathComponent("gate.log")
+            if let h = try? FileHandle(forWritingTo: url) { h.seekToEndOfFile(); h.write(Data(line.utf8)); try? h.close() }
+            else { try? Data(line.utf8).write(to: url) }
+        }
+    }
+    /// A held send is being checked in the background: anything else is held too until it's done.
+    private var checking = false
+    public private(set) var lastCheckMs: Double = 0
 
     private func refreshSendFrame(front: (adapter: DesktopAIAdapter, pid: pid_t, app: AXElement), input: AXElement) {
         if let send = front.adapter.sendControl(app: front.app, near: input), let f = AX.frame(send), f.width > 0 {
@@ -120,6 +166,9 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
     public var settingsWereRecovered: Bool { settingsStore.recoveredFromDamage }
     /// True while MIRAGE's decision panel has keyboard focus: its keys are for the panel.
     public var isDecisionPanelKey: () -> Bool = { false }
+    /// True if a screen point (top-left origin) is on one of MIRAGE's own windows: those clicks
+    /// are MIRAGE's, never held (the decision panel sits right above the prompt box).
+    public var isOnMirageWindow: (CGPoint) -> Bool = { _ in false }
 
     public init() {
         settings = settingsStore.load()
@@ -180,8 +229,14 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
         inputObserver.stop()
         front = nil
         sendFrame = nil
+        inputFrame = nil
+        windowFrame = nil
+        live = nil
+        checking = false
         lastInput = nil
         lastLiveText = nil
+        earlyTimer?.cancel()
+        earlyLatest = nil
         liveRisk = .safe
         if let app, let adapter = AdapterRegistry.adapter(forBundle: app.bundleID),
            adapter.status != .unsupported, settings.appEnabled(adapter.id), settings.protectionOn,
@@ -215,62 +270,110 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
 
     // MARK: - the gate
 
+    /// The gate's decision, made in well under a millisecond from cached state only.
+    ///
+    /// macOS disables an event tap that takes too long and then DELIVERS the event it was holding,
+    /// so the check can never run here: a long prompt (slow to read through Accessibility) let a
+    /// send through while MIRAGE was still checking (reported by a user, ChatGPT 26.924). Instead:
+    /// hold at once, check in the background, re-send the user's own Return or click (marked as
+    /// MIRAGE's) when the prompt is clean, otherwise open the decision.
     public func submitGateShouldHold(_ trigger: SubmitTrigger) -> Bool {
         gateEvents += 1
         let gateStart = CFAbsoluteTimeGetCurrent()
         defer { lastGateMs = (CFAbsoluteTimeGetCurrent() - gateStart) * 1000 }
-        guard let front, let core else { lastGateReason = "noProtectedFront"; return false }
-        // While a decision is open for this app, nothing may send.
-        if decision != nil {
-            if isDecisionPanelKey() { return false }
-            if case .returnKey = trigger { return true }
-            if case .click(let p) = trigger, isSendClick(p, front: front) { return true }
-            return false
-        }
-        let input: AXElement?
+        guard let front, core != nil else { lastGateReason = "noProtectedFront"; return false }
+        if decision != nil && isDecisionPanelKey() { return false } // the panel's own keys
         switch trigger {
         case .returnKey:
-            if let focused = AX.focusedElement(of: front.app) {
-                guard front.adapter.isInput(focused) else { lastGateReason = "returnNotInPrompt:\(AX.role(focused) ?? "?")"; return false }
-                input = focused
-                lastInput = (focused, Date())
-            } else if let last = lastInput, Date().timeIntervalSince(last.seen) < 120 {
-                // The app didn't answer in time, but the user was just in the prompt box: fail closed.
-                input = last.element
-            } else {
-                lastGateReason = "focusUnknown"
-                return false // no sign the user is in a prompt box
-            }
+            break // every plain Return in a protected app is held and checked
         case .click(let p):
-            guard isSendClick(p, front: front) else { lastGateReason = "clickNotSend"; return false }
-            input = lastInput?.element ?? front.adapter.inputElement(app: front.app)
+            if isOnMirageWindow(p) { lastGateReason = "clickOnMirage"; return false }
+            // Only clicks on (or near) the send button; clicks in the text itself pass untouched.
+            let onSend = sendFrame.map { $0.insetBy(dx: -4, dy: -4).contains(p) } ?? false
+            let nearBox = inputFrame.map { !$0.contains(p) && $0.insetBy(dx: -160, dy: -160).contains(p) } ?? false
+            // Where the composer lives (bottom 40% of the app's window), in case the caches are not
+            // filled yet: checked in the background, re-sent at once if it isn't a send.
+            let composerArea = windowFrame.map { w in CGRect(x: w.minX, y: w.minY + w.height * 0.6, width: w.width, height: w.height * 0.4).contains(p) } ?? false
+            let inText = inputFrame.map { $0.contains(p) } ?? false
+            guard onSend || nearBox || (composerArea && !inText) else { lastGateReason = "clickNotSend"; trace("click-pass"); return false }
         }
-        guard let input, let text = front.adapter.readInput(input) else {
-            // It is the prompt's send, but MIRAGE can't read the prompt: hold it and say so.
-            present(Decision(app: front.adapter.id, appName: front.adapter.displayName, analysis: Analysis.empty, heldSubmission: true, unreadable: true, original: "", appElement: front.app, input: input))
-            return true
-        }
-        let t0 = CFAbsoluteTimeGetCurrent()
-        guard let analysis = try? core.analyze(text, settings: settings.detection, policy: settings.policy) else {
-            present(Decision(app: front.adapter.id, appName: front.adapter.displayName, analysis: Analysis.empty, heldSubmission: true, unreadable: true, original: text, appElement: front.app, input: input))
-            return true
-        }
-        lastDetectionMs = (CFAbsoluteTimeGetCurrent() - t0) * 1000
-        var delta = Counts()
-        delta.checked = 1
-        guard !analysis.actionable.isEmpty else {
-            lastGateReason = "clean"
-            record(delta, app: front.adapter.id)
-            scheduleReplyCheck(front: front)
-            return false
-        }
-        delta.held = 1
-        lastGateReason = "held"
+        if decision != nil || checking { lastGateReason = "heldWhileBusy"; trace("held-busy"); return true }
+        trace(trigger == .returnKey ? "held-return" : "held-click")
+        checking = true
         lastHoldAt = CFAbsoluteTimeGetCurrent()
-        record(delta, app: front.adapter.id)
-        log.info("held a send: \(analysis.actionable.count, privacy: .public) items, level \(analysis.risk.level.rawValue, privacy: .public)")
-        present(Decision(app: front.adapter.id, appName: front.adapter.displayName, analysis: analysis, heldSubmission: true, unreadable: false, original: text, appElement: front.app, input: input))
+        checkHeld(trigger, front: front)
         return true
+    }
+
+    /// Background check of a held send. Clean → the same Return or click is sent again, at once.
+    private func checkHeld(_ trigger: SubmitTrigger, front: (adapter: DesktopAIAdapter, pid: pid_t, app: AXElement)) {
+        guard let core else { checking = false; return }
+        let settings = settings
+        let lastKnownInput = lastInput?.element
+        gateQueue.async { [weak self] in
+            enum Verdict { case pass(Int), decide(Analysis, String, AXElement), unreadable(AXElement?) }
+            let verdict: Verdict = {
+                var input: AXElement?
+                switch trigger {
+                case .returnKey:
+                    // Always check the prompt box's text, wherever the app says focus is: focus is
+                    // reported differently by different app builds, and a mismatch must never let
+                    // a send through unchecked.
+                    input = front.adapter.inputElement(app: front.app) ?? lastKnownInput
+                case .click(let p):
+                    var el = AX.element(at: p)
+                    var isSend = false
+                    for _ in 0..<5 {
+                        guard let e = el, AX.pid(e) == front.pid else { break }
+                        if front.adapter.isSendControl(e) { isSend = true; break }
+                        el = AX.parent(e)
+                    }
+                    guard isSend else { return .pass(-1) }
+                    input = front.adapter.inputElement(app: front.app) ?? lastKnownInput
+                }
+                guard let input, let text = front.adapter.readInput(input) else { return .unreadable(input) }
+                guard let analysis = try? core.analyze(text, settings: settings.detection, policy: settings.policy) else { return .unreadable(input) }
+                return analysis.actionable.isEmpty ? .pass(text.count) : .decide(analysis, text, input)
+            }()
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.checking = false
+                    self.lastCheckMs = (CFAbsoluteTimeGetCurrent() - self.lastHoldAt) * 1000
+                    var delta = Counts()
+                    switch verdict {
+                    case .pass(let length):
+                        self.lastGateReason = "clean"
+                        self.trace(length < 0 ? "click-not-send-resent" : "checked-clean-resent chars=\(length)")
+                        delta.checked = 1
+                        self.record(delta, app: front.adapter.id)
+                        self.replay(trigger, pid: front.pid)
+                        if case .returnKey = trigger { self.scheduleReplyCheck(front: front) }
+                    case .decide(let analysis, let text, let input):
+                        self.lastGateReason = "held"
+                        self.trace("decision-shown items=\(analysis.actionable.count)")
+                        delta.checked = 1
+                        delta.held = 1
+                        self.record(delta, app: front.adapter.id)
+                        self.lastInput = (input, Date())
+                        self.log.info("held a send: \(analysis.actionable.count, privacy: .public) items, level \(analysis.risk.level.rawValue, privacy: .public)")
+                        self.decision = Decision(app: front.adapter.id, appName: front.adapter.displayName, analysis: analysis, heldSubmission: true, unreadable: false, original: text, appElement: front.app, input: input)
+                    case .unreadable(let input):
+                        self.lastGateReason = "unreadable"
+                        self.trace("decision-shown unreadable")
+                        self.decision = Decision(app: front.adapter.id, appName: front.adapter.displayName, analysis: Analysis.empty, heldSubmission: true, unreadable: true, original: "", appElement: front.app, input: input)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Sends the user's held Return or click on, marked as MIRAGE's own so the gate lets it pass.
+    private func replay(_ trigger: SubmitTrigger, pid: pid_t) {
+        switch trigger {
+        case .returnKey: _ = KeyPoster.postReturn(to: pid)
+        case .click(let p): KeyPoster.click(at: p)
+        }
     }
 
     private func isSendClick(_ p: CGPoint, front: (adapter: DesktopAIAdapter, pid: pid_t, app: AXElement)) -> Bool {
@@ -354,12 +457,16 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
         let settings = settings
         let original = d.original
         let keep = Array(d.keep)
-        axQueue.async { [weak self] in
+        gateQueue.async { [weak self] in
+            let t0 = CFAbsoluteTimeGetCurrent()
+            var phases: [String] = [] // timings only, never text
+            func mark(_ name: String) { phases.append(String(format: "%@=%.0f", name, (CFAbsoluteTimeGetCurrent() - t0) * 1000)) }
             let outcome: ProtectOutcome = {
                 Thread.sleep(forTimeInterval: 0.15)
                 guard let current = adapter.readInput(input) else {
                     return .failed("MIRAGE couldn't read the message box. Your original message has not been submitted.")
                 }
+                mark("read")
                 if normalizedPromptText(current) != normalizedPromptText(original) { return .edited(current) }
                 guard let protected = try? core.protect(original, settings: settings.detection, keep: keep) else {
                     return .failed("Protection could not be verified. Your original message has not been submitted.")
@@ -371,9 +478,11 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
                         ? "Protection could not be verified. Your original message has not been submitted."
                         : "Protection could not be verified. Your message has not been submitted — check the message box before sending.")
                 }
+                mark("replaced")
                 guard adapter.submit(app: d.appElement, input: input) else {
                     return .failed("Your message was protected but MIRAGE couldn't send it. It is still in the box, protected.")
                 }
+                mark("submitted")
                 // Sent means the app took the text out of the box. Until then, MIRAGE claims nothing.
                 let expected = normalizedPromptText(protected.text)
                 for _ in 0..<30 {
@@ -382,8 +491,12 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
                 }
                 return .notConfirmed(protected)
             }()
+            mark("done")
             DispatchQueue.main.async {
-                MainActor.assumeIsolated { self?.finishProtect(outcome, decision: d, core: core) }
+                MainActor.assumeIsolated {
+                    self?.trace("protect-ms " + phases.joined(separator: " "))
+                    self?.finishProtect(outcome, decision: d, core: core)
+                }
             }
         }
     }
@@ -394,9 +507,11 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
             guard let fresh = try? core.analyze(text, settings: settings.detection, policy: settings.policy) else { return }
             decision = Decision(app: d.app, appName: d.appName, analysis: fresh, heldSubmission: true, unreadable: false, original: text, appElement: d.appElement, input: d.input)
         case .failed(let message):
+            trace("protect-failed")
             log.error("protect flow stopped before sending")
             fail(message)
         case .sent(let protected):
+            trace("protect-sent hidden=\(protected.hidden) removed=\(protected.removed)")
             var delta = Counts()
             delta.protectedSends = 1
             delta.masked = protected.hidden
@@ -407,6 +522,7 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
             toast = Toast(text: "Sent protected · \(protected.hidden) hidden · \(protected.removed) removed", success: true)
             scheduleReplyCheck(front: front)
         case .notConfirmed:
+            trace("protect-not-confirmed")
             log.error("send not confirmed by the app")
             decision = nil
             toast = Toast(text: "\(d.appName) didn't send. Your protected message is in the box: press Send.", success: false)
@@ -426,26 +542,97 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
     /// Accessibility reads for the live shield and the send-button cache run here, off the main
     /// thread, so typing in the AI app never waits on MIRAGE. Results are applied on main.
     private let axQueue = DispatchQueue(label: "dev.mirage.ax", qos: .utility)
+    /// The send check and Protect & Send run here, never queued behind background work: a held
+    /// send must be answered at once (live refresh on the other queue delayed the panel by seconds).
+    private let gateQueue = DispatchQueue(label: "dev.mirage.gate", qos: .userInteractive)
     private var lastLiveText: String?
 
+    // MARK: - review while typing
+
+    /// The review panel opens as soon as the prompt has something to hide (when the badge turns
+    /// amber or red), once typing pauses, not only on Enter. While it is open every Return and
+    /// Send click is held, so nothing leaves until the user chooses. It opens once per set of
+    /// details: after Cancel it comes back only for something new (or a click on the badge).
+    private var earlyShown: Set<String> = [] // in memory only, never logged
+    private var earlyTimer: DispatchWorkItem?
+    private var earlyLatest: (input: AXElement, text: String, analysis: Analysis)?
+
+    private func scheduleEarlyReview(front: (adapter: DesktopAIAdapter, pid: pid_t, app: AXElement), input: AXElement, text: String, analysis: Analysis?) {
+        earlyTimer?.cancel()
+        // An open early review follows the prompt: updated as the user types, closed when the
+        // sensitive details are gone.
+        if let d = decision, d.early, d.stage == .review, d.original != text {
+            if let analysis, !analysis.actionable.isEmpty {
+                decision = Decision(app: d.app, appName: d.appName, analysis: analysis, heldSubmission: true, unreadable: false, early: true, original: text, appElement: d.appElement, input: input)
+            } else {
+                decision = nil
+            }
+        }
+        guard let analysis, !analysis.actionable.isEmpty else { earlyShown = []; earlyLatest = nil; return }
+        earlyLatest = (input, text, analysis)
+        guard settings.reviewWhileTyping else { return }
+        let keys = Set(analysis.actionable.map { $0.type + "\u{1}" + $0.value })
+        guard !keys.isSubset(of: earlyShown) else { return }
+        let work = DispatchWorkItem { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.lastLiveText == text else { return }
+                self.earlyShown.formUnion(keys)
+                self.openReview(front: front, input: input, text: text, analysis: analysis, reason: "early-review")
+            }
+        }
+        earlyTimer = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: work)
+    }
+
+    /// Opens the review for what is in the prompt box now (the badge's click).
+    public func reviewNow() {
+        guard let front, let latest = earlyLatest, latest.text == lastLiveText else { return }
+        openReview(front: front, input: latest.input, text: latest.text, analysis: latest.analysis, reason: "badge-review", early: false)
+    }
+
+    private func openReview(front: (adapter: DesktopAIAdapter, pid: pid_t, app: AXElement), input: AXElement, text: String, analysis: Analysis, reason: String, early: Bool = true) {
+        guard decision == nil, !checking, self.front?.pid == front.pid else { return }
+        trace("\(reason) items=\(analysis.actionable.count)")
+        lastHoldAt = CFAbsoluteTimeGetCurrent()
+        // Nothing was submitted: the user hasn't sent, and sends are held while the panel is open.
+        decision = Decision(app: front.adapter.id, appName: front.adapter.displayName, analysis: analysis, heldSubmission: true, unreadable: false, early: early, original: text, appElement: front.app, input: input)
+    }
+
     private func refreshLiveRisk() {
-        guard let front, let core else { liveRisk = .safe; return }
+        guard let front, let core else { liveRisk = .safe; live = nil; return }
         let settings = settings
         axQueue.async { [weak self] in
             guard let input = front.adapter.inputElement(app: front.app), let text = front.adapter.readInput(input) else {
-                DispatchQueue.main.async { MainActor.assumeIsolated { self?.liveRisk = .safe } }
+                DispatchQueue.main.async { MainActor.assumeIsolated { self?.liveRisk = .safe; self?.live = nil } }
                 return
             }
             let send = front.adapter.sendControl(app: front.app, near: input).flatMap(AX.frame)
+            let inputBox = AX.frame(input)
+            let window: CGRect? = { () -> CGRect? in
+                guard let w: CFTypeRef = AX.attribute(front.app, kAXFocusedWindowAttribute), CFGetTypeID(w) == AXUIElementGetTypeID() else { return nil }
+                return AX.frame(w as! AXElement)
+            }()
+            let analysis = try? core.analyze(text, settings: settings.detection, policy: settings.policy)
+            let marks: [LiveMarks.Mark] = [] // no underlines (by request); cheap refresh only
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
                     guard let self, self.front?.pid == front.pid else { return }
                     self.lastInput = (input, Date())
                     if let send, send.width > 0 { self.sendFrame = send }
-                    // Unchanged text: keep the last result.
-                    guard text != self.lastLiveText else { return }
+                    if let box = inputBox, box.width > 0 { self.inputFrame = box; self.promptBoxFrame = box }
+                    if let window, window.width > 0 { self.windowFrame = window }
                     self.lastLiveText = text
-                    self.liveRisk = (try? core.analyze(text, settings: settings.detection, policy: settings.policy).risk.level) ?? .safe
+                    self.liveRisk = analysis?.risk.level ?? .safe
+                    if let analysis, let box = inputBox, !analysis.findings.isEmpty {
+                        self.live = LiveMarks(box: box, count: analysis.actionable.count, level: analysis.risk.level, score: analysis.risk.score,
+                                              hasSecret: analysis.actionable.contains { $0.policy == .block },
+                                              names: analysis.findings.map(\.type), marks: marks)
+                    } else if let box = inputBox {
+                        self.live = LiveMarks(box: box, count: 0, level: .safe, score: 0, hasSecret: false, names: [], marks: [])
+                    } else {
+                        self.live = nil
+                    }
+                    self.scheduleEarlyReview(front: front, input: input, text: text, analysis: analysis)
                 }
             }
         }
@@ -487,6 +674,52 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
         }
     }
     private var replyToken: UUID?
+
+    // MARK: - Private Compose
+
+    public enum InsertOutcome: Equatable { case inserted(hidden: Int, removed: Int), notRunning, noPromptBox, notVerified, noPermission }
+
+    /// Supported apps that are running now (targets for Private Compose).
+    public func composeTargets() -> [AppRow] {
+        AdapterRegistry.all.filter { $0.status != .unsupported && AppMonitor.isRunning(bundleIDs: $0.bundleIdentifiers) }
+            .map { AppRow(id: $0.id, name: $0.displayName, state: .protecting) }
+    }
+
+    /// Private Compose: the prompt was written in MIRAGE's window, never in the AI app. Protect it,
+    /// bring the app forward, type only the protected text into its prompt box, and verify it by
+    /// reading back. MIRAGE does not press Send: the user checks it in the app and sends.
+    public func insertProtected(_ text: String, keep: [Int], into id: AppID, done: @escaping (InsertOutcome) -> Void) {
+        guard permissions.accessibilityGranted else { done(.noPermission); return }
+        guard let core, let adapter = AdapterRegistry.all.first(where: { $0.id == id }),
+              let running = NSWorkspace.shared.runningApplications.first(where: { adapter.bundleIdentifiers.contains($0.bundleIdentifier ?? "") }) else {
+            done(.notRunning)
+            return
+        }
+        let settings = settings
+        running.activate()
+        axQueue.async { [weak self] in
+            let app = AX.app(pid: running.processIdentifier)
+            adapter.prepare(app: app)
+            Thread.sleep(forTimeInterval: 0.35) // let the app come forward: typing reaches the focused window only
+            let outcome: InsertOutcome = {
+                guard let input = adapter.inputElement(app: app) else { return .noPromptBox }
+                guard let protected = try? core.protect(text, settings: settings.detection, keep: keep) else { return .notVerified }
+                guard adapter.replaceInput(input, with: protected.text) == .verified else { return .notVerified }
+                return .inserted(hidden: protected.hidden, removed: protected.removed)
+            }()
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    if case .inserted(let hidden, let removed) = outcome {
+                        var delta = Counts()
+                        delta.masked = hidden
+                        delta.secretsRemoved = removed
+                        self?.record(delta, app: id)
+                    }
+                    done(outcome)
+                }
+            }
+        }
+    }
 
     // MARK: - settings and stats
 

@@ -72,7 +72,7 @@ const NOT_NAMES = new Set(
 );
 
 /** One to three capitalized words (Unicode letters), read at a fixed position (sticky). */
-const NAME_AT = /(\p{Lu}[\p{Ll}'’-]+(?:\s+\p{Lu}[\p{Ll}'’-]+){0,2})/uy;
+const NAME_AT = /(\p{Lu}[\p{Ll}'’-]+(?:[ \t]+\p{Lu}[\p{Ll}'’-]+){0,2})/uy; // never across a line break
 
 interface NameTrigger {
   pattern: RegExp;

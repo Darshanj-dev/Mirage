@@ -7,7 +7,7 @@ import SwiftUI
 
 @MainActor
 final class WindowManager {
-    enum Kind { case onboarding, dashboard, permissions }
+    enum Kind { case onboarding, dashboard, permissions, compose }
     private let controller: ProtectionController
     private var windows: [Kind: NSWindow] = [:]
 
@@ -35,13 +35,17 @@ final class WindowManager {
         case .dashboard:
             title = "MIRAGE Dashboard"
             view = AnyView(DashboardView(controller: controller))
+        case .compose:
+            title = "MIRAGE Private Compose"
+            view = AnyView(ComposeView(controller: controller))
         case .permissions:
             title = "MIRAGE Permissions"
             view = AnyView(PermissionsPane(permissions: controller.permissions).frame(width: 460, height: 320))
         }
         let window = NSWindow(contentViewController: NSHostingController(rootView: view))
         window.title = title
-        window.styleMask = kind == .dashboard ? [.titled, .closable, .miniaturizable, .resizable] : [.titled, .closable]
+        window.styleMask = kind == .dashboard || kind == .compose ? [.titled, .closable, .miniaturizable, .resizable] : [.titled, .closable]
+        if kind == .compose { window.level = .floating }
         window.isReleasedWhenClosed = false
         // Open on the Space the user is looking at (e.g. over a full-screen app), not on another one.
         window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]

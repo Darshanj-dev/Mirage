@@ -65,6 +65,18 @@ public enum AX {
         return el
     }
 
+    /// The on-screen rectangle of a run of characters in a text element (UTF-16 offsets).
+    public static func bounds(of el: AXElement, start: Int, length: Int) -> CGRect? {
+        var range = CFRange(location: start, length: max(1, length))
+        guard let rangeValue = AXValueCreate(.cfRange, &range) else { return nil }
+        var out: CFTypeRef?
+        guard AXUIElementCopyParameterizedAttributeValue(el, kAXBoundsForRangeParameterizedAttribute as CFString, rangeValue, &out) == .success,
+              let value = out, CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
+        var rect = CGRect.zero
+        guard AXValueGetValue(value as! AXValue, .cgRect, &rect), rect.width > 0, rect.height > 0 else { return nil }
+        return rect
+    }
+
     public static func pid(_ el: AXElement) -> pid_t? {
         var pid: pid_t = 0
         return AXUIElementGetPid(el, &pid) == .success ? pid : nil
@@ -125,11 +137,12 @@ public enum AX {
     public static func isTrusted() -> Bool { AXIsProcessTrusted() }
 }
 
-/// Text as MIRAGE compares it: line endings and odd spaces normalized, trailing space ignored.
+/// Text as MIRAGE compares it: the same words and characters, however the app stores line
+/// breaks, blank lines and spaces (ChatGPT's editor stores blank lines differently from how they
+/// were typed, so an exact comparison failed on long multi-line prompts).
 public func normalizedPromptText(_ s: String) -> String {
-    s.replacingOccurrences(of: "\r\n", with: "\n")
-        .replacingOccurrences(of: "\r", with: "\n")
-        .replacingOccurrences(of: "\u{00A0}", with: " ")
-        .replacingOccurrences(of: "\u{FFFC}", with: "")
-        .trimmingCharacters(in: .whitespacesAndNewlines)
+    s.replacingOccurrences(of: "\u{FFFC}", with: "")
+        .components(separatedBy: .whitespacesAndNewlines)
+        .filter { !$0.isEmpty }
+        .joined(separator: " ")
 }

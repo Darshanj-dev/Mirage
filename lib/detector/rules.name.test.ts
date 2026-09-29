@@ -14,6 +14,7 @@ describe('NAME rule', () => {
       ['Dear Anita, thanks for the update', 'Anita'],
       ['Regards,\nNinad Pandith', 'Ninad Pandith'],
       ['Name: Lakshmi Venkatesh', 'Lakshmi Venkatesh'],
+      ['Name: Rahul Sharma\nDate of Birth: 14 March 2002', 'Rahul Sharma'],
     ],
     [
       "I'm Indian and want to visit Japan",

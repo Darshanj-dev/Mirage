@@ -28,13 +28,14 @@ public final class SubmitGate {
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     public private(set) var isEnabled = false
+    private var swallowNextMouseUp = false
 
     public init() {}
 
     /// Creates the tap. Fails (returns false) without Accessibility permission.
     public func install() -> Bool {
         if tap != nil { return true }
-        let mask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.leftMouseDown.rawValue)
+        let mask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.leftMouseDown.rawValue) | (1 << CGEventType.leftMouseUp.rawValue)
         let refcon = Unmanaged.passUnretained(self).toOpaque()
         guard let port = CGEvent.tapCreate(
             tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap,
@@ -76,7 +77,19 @@ public final class SubmitGate {
             guard code == 36 || code == 76, !modified else { return Unmanaged.passUnretained(event) }
             return delegate?.submitGateShouldHold(.returnKey) == true ? nil : Unmanaged.passUnretained(event)
         case .leftMouseDown:
-            return delegate?.submitGateShouldHold(.click(event.location)) == true ? nil : Unmanaged.passUnretained(event)
+            if event.getIntegerValueField(.eventSourceUserData) == KeyPoster.marker { return Unmanaged.passUnretained(event) }
+            if delegate?.submitGateShouldHold(.click(event.location)) == true {
+                swallowNextMouseUp = true
+                return nil
+            }
+            return Unmanaged.passUnretained(event)
+        case .leftMouseUp:
+            // The up of a held click is held too, so the app never sees half a click.
+            if swallowNextMouseUp && event.getIntegerValueField(.eventSourceUserData) != KeyPoster.marker {
+                swallowNextMouseUp = false
+                return nil
+            }
+            return Unmanaged.passUnretained(event)
         default:
             return Unmanaged.passUnretained(event)
         }
