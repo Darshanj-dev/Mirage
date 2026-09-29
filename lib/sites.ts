@@ -13,6 +13,12 @@ export interface SiteConfig {
   sendButton: readonly string[];
   /** The element that wraps the prompt box and its buttons. */
   composer: readonly string[];
+  /** One AI reply with its action buttons; empty where not yet known ("Copy with details" is off). */
+  replyTurn: readonly string[];
+  /** The reply's own text, inside a reply turn. */
+  replyContent: readonly string[];
+  /** The site's copy button inside a reply turn; "Copy with details" goes right after it. */
+  replyCopyButton: readonly string[];
   /** Conversation id from the URL path, or null for a new, unsaved chat. */
   chatIdFromPath(path: string): string | null;
   /** False until selectors for this site have been checked by hand. */
@@ -28,6 +34,10 @@ export const SITES: Record<Site, SiteConfig> = {
     // While a reply streams, #composer-submit-button becomes the stop button; isSendButton() skips it.
     sendButton: ['button[data-testid="send-button"]', '#composer-submit-button'],
     composer: ['form'],
+    // Reply selectors taken from chatgpt.com via DevTools on 2026-09-29.
+    replyTurn: ['section[data-testid^="conversation-turn-"]:has([data-message-author-role="assistant"])'],
+    replyContent: ['[data-message-author-role="assistant"]'],
+    replyCopyButton: ['button[data-testid="copy-turn-action-button"]'],
     // /c/<uuid>, or /g/<gpt>/c/<uuid> inside a custom GPT. Only a full conversation UUID counts:
     // right after the first send ChatGPT briefly shows /c/WEB:<client id>, which is not the chat's id.
     chatIdFromPath: (path) =>
@@ -45,6 +55,9 @@ export const SITES: Record<Site, SiteConfig> = {
     // While a reply streams the button becomes "Stop response"; isSendButton() skips it.
     sendButton: ['button[aria-label="Send message"]', 'button.send-button'],
     composer: ['.input-area-container', 'input-area-v2', 'fieldset', '.text-input-field', 'rich-textarea'],
+    replyTurn: [], // not yet taken from gemini.google.com
+    replyContent: [],
+    replyCopyButton: [],
     // /app/<16 hex>, also under /u/<n>/app/<id> for a second Google account. New chats are /app.
     chatIdFromPath: (path) => /\/app\/([0-9a-f]{12,})(?![0-9a-z:_-])/i.exec(path)?.[1]?.toLowerCase() ?? null,
     ready: true,

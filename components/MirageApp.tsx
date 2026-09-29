@@ -14,6 +14,7 @@ import { ShieldBadge } from './ShieldBadge';
 import { Tooltip } from './Tooltip';
 import type { HoverTarget } from './useRangeHover';
 import { usePromptWatcher, type BadgeStatus } from './usePromptWatcher';
+import { useCopyButtons } from './useCopyButtons';
 import { useRestorer } from './useRestorer';
 import { useSendFlow } from './useSendFlow';
 
@@ -63,6 +64,7 @@ export function MirageApp({ site, guard }: { site: SiteConfig; guard: SendGuard 
   const { status, scan, anchor, hover } = watcher;
   const flow = useSendFlow(site, guard, watcher.settingsRef, watcher.loadSettings);
   const restorer = useRestorer(site);
+  useCopyButtons(site, restorer.spans);
   const [badgeHover, setBadgeHover] = useState(false);
   const settings = watcher.settings;
 

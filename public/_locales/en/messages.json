@@ -33,6 +33,8 @@
   "restore_view": { "message": "$SITE$ saw $PLACEHOLDER$. Your detail: $VALUE$", "placeholders": { "site": { "content": "$1" }, "placeholder": { "content": "$2" }, "value": { "content": "$3" } } },
   "restore_expired": { "message": "Details cleared after 24 hours." },
   "restore_copy": { "message": "Copy with details" },
+  "restore_copied": { "message": "Copied with details" },
+  "restore_copyFailed": { "message": "Couldn't copy. Try again." },
 
   "error_check": { "message": "MIRAGE couldn't check this prompt." },
   "error_retry": { "message": "Try again" },
