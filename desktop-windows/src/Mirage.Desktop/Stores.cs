@@ -1,5 +1,6 @@
 // Settings and statistics: small JSON files in %APPDATA%\MIRAGE that never contain prompt text
 // or values (switches and counts only). A damaged file is replaced by defaults, never a crash.
+using System.IO;
 using System.Text.Json;
 using Mirage.Core;
 
@@ -60,21 +61,21 @@ internal sealed class JsonStore<T> where T : new()
     {
         get
         {
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MIRAGE");
+            var dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MIRAGE");
             System.IO.Directory.CreateDirectory(dir);
             return dir;
         }
     }
 
-    public JsonStore(string name) { _path = Path.Combine(Directory, name); }
+    public JsonStore(string name) { _path = System.IO.Path.Combine(Directory, name); }
 
     public T Load()
     {
-        if (!File.Exists(_path)) return new T();
-        try { return JsonSerializer.Deserialize<T>(File.ReadAllText(_path), Options) ?? new T(); }
+        if (!System.IO.File.Exists(_path)) return new T();
+        try { return JsonSerializer.Deserialize<T>(System.IO.File.ReadAllText(_path), Options) ?? new T(); }
         catch
         {
-            try { File.Move(_path, _path + ".damaged", overwrite: true); } catch { }
+            try { System.IO.File.Move(_path, _path + ".damaged", overwrite: true); } catch { }
             RecoveredFromDamage = true;
             return new T();
         }
@@ -83,7 +84,7 @@ internal sealed class JsonStore<T> where T : new()
     public void Save(T value)
     {
         var tmp = _path + ".tmp";
-        File.WriteAllText(tmp, JsonSerializer.Serialize(value, Options));
-        File.Move(tmp, _path, overwrite: true);
+        System.IO.File.WriteAllText(tmp, JsonSerializer.Serialize(value, Options));
+        System.IO.File.Move(tmp, _path, overwrite: true);
     }
 }

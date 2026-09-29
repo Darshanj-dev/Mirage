@@ -135,7 +135,7 @@ internal sealed class ProtectionController : IDisposable
     /// Clicks on the send button, or near the prompt box (not inside it), are held and checked.
     private bool ShouldHoldClick(int x, int y)
     {
-        var p = new Point(x, y);
+        var p = new System.Windows.Point(x, y);
         if (_sendRect is { } s && Inflate(s, 4).Contains(p)) return true;
         if (_inputRect is { } i && !i.Contains(p) && Inflate(i, 150).Contains(p)) return true;
         return false;
@@ -189,7 +189,7 @@ internal sealed class ProtectionController : IDisposable
 
     private bool IsSendClick(DesktopAIAdapter adapter, int pid, int x, int y)
     {
-        if (_sendRect is { } s && Inflate(s, 4).Contains(new Point(x, y))) return true;
+        if (_sendRect is { } s && Inflate(s, 4).Contains(new System.Windows.Point(x, y))) return true;
         var el = Uia.At(x, y);
         for (var i = 0; i < 4 && el != null; i++)
         {

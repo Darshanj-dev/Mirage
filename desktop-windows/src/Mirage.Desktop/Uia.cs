@@ -18,7 +18,7 @@ internal static class Uia
 
     public static AutomationElement? Focused() => Try(() => AutomationElement.FocusedElement);
 
-    public static AutomationElement? At(int x, int y) => Try(() => AutomationElement.FromPoint(new Point(x, y)));
+    public static AutomationElement? At(int x, int y) => Try(() => AutomationElement.FromPoint(new System.Windows.Point(x, y)));
 
     public static int ProcessId(AutomationElement el) { try { return el.Current.ProcessId; } catch { return -1; } }
 
