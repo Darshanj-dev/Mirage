@@ -12,13 +12,36 @@ import ApplicationServices
 
 public enum EndToEnd {
     static let awsId = ["AKIA", "Q7Z3", "MIRAGEDEMO", "42"].joined()
-    static let raw = [awsId, "BNZPM2501K", "priya.demo@example.com"]
-    static let prompt = "I'm debugging my production server. AWS_ACCESS_KEY_ID=\(awsId) My PAN is BNZPM2501K. My email is priya.demo@example.com. Reply with one word: ok."
+    static let raw = [awsId, "BNZPM2501K", "priya.demo@example.com", "rahul.sharma.demo@example.com", "S3cr3tPass", "98765 43210"]
+    static let shortPrompt = "I'm debugging my production server. AWS_ACCESS_KEY_ID=\(awsId) My PAN is BNZPM2501K. My email is priya.demo@example.com. Reply with one word: ok."
+    /// Like the prompt a user reported (long, many items), with fictional values.
+    static let longPrompt = """
+    I'm preparing a professional profile and onboarding document for a new employee.
+
+    Employee details:
+    Name: Rahul Sharma
+    Date of Birth: 14 March 2002
+    PAN: BNZPM2501K
+    Phone: +91 98765 43210
+    Personal Email: rahul.sharma.demo@example.com
+    Address: Flat 402, Green Valley Apartments, 24th Main Road, Bengaluru, Karnataka 560064
+
+    Employment information:
+    Company: Nexora Technologies Pvt. Ltd.
+    Work Email: rahul.sharma@nexora-demo.example
+    AWS_ACCESS_KEY_ID=\(awsId)
+    DATABASE_URL=postgres://admin:S3cr3tPass@db.internal:5432/prod
+    Please write a short welcome note. Reply with one word: ok.
+    """
+    static var prompt = shortPrompt
 
     /// A clean prompt that asks the AI to invent a key-shaped string: tests the reply check.
     static let replyPrompt = "Invent one example AWS access key ID for a tutorial: the letters AKIA followed by 16 random uppercase letters and digits. Reply with only that ID."
 
     public static func run(bundleID: String, action: String) -> [String] {
+        prompt = action.hasPrefix("long") ? longPrompt : shortPrompt
+        if action == "compose" { return compose(bundleID: bundleID) }
+        if action == "live" { return liveMarks(bundleID: bundleID) }
         guard let adapter = AdapterRegistry.adapter(forBundle: bundleID),
               let target = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first else { return ["FAIL \(bundleID) not running"] }
         guard let mirage = NSRunningApplication.runningApplications(withBundleIdentifier: "dev.mirage.desktop")
@@ -50,7 +73,13 @@ public enum EndToEnd {
             }
             return out + ["no reply alert within 45 s"]
         }
-        guard adapter.replaceInput(input, with: prompt) == .verified else { return out + ["FAIL could not type the demo prompt"] }
+        guard adapter.replaceInput(input, with: prompt) == .verified else {
+            let got = normalizedPromptText(adapter.readInput(input) ?? "")
+            let want = normalizedPromptText(prompt)
+            let common = zip(got, want).prefix { $0 == $1 }.count
+            return out + ["FAIL could not type the demo prompt: box \(got.count) chars vs \(want.count) wanted, identical for the first \(common)",
+                          "  differs at: got …\(got.dropFirst(max(0, common - 10)).prefix(40))… want …\(want.dropFirst(max(0, common - 10)).prefix(40))…"]
+        }
         AX.set(input, kAXFocusedAttribute, kCFBooleanTrue)
         Thread.sleep(forTimeInterval: 0.4)
 
@@ -160,5 +189,62 @@ public enum EndToEnd {
             }
         }
         return parts.joined(separator: "\n")
+    }
+}
+
+
+extension EndToEnd {
+    /// Private Compose on the live app: the running MIRAGE (with --debug-hooks) inserts the long
+    /// fictional prompt from its own window; the driver checks the app's box holds only the
+    /// protected text, presses Return as a user would, and checks what the app sent.
+    static func compose(bundleID: String) -> [String] {
+        guard let adapter = AdapterRegistry.adapter(forBundle: bundleID),
+              let target = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first else { return ["FAIL not running"] }
+        let app = AXUIElementCreateApplication(target.processIdentifier)
+        AXUIElementSetMessagingTimeout(app, 3)
+        adapter.prepare(app: app)
+        var out = ["target=\(adapter.displayName) action=compose (long prompt, \(longPrompt.count) chars)"]
+        let before = raw.filter { conversationText(app: app, excluding: app).contains($0) }.count
+        DistributedNotificationCenter.default().postNotificationName(.init("dev.mirage.debug.compose"), object: longPrompt, userInfo: nil, deliverImmediately: true)
+        Thread.sleep(forTimeInterval: 8)
+        guard let input = adapter.inputElement(app: app) else { return out + ["FAIL input not found"] }
+        let box = adapter.readInput(input) ?? ""
+        out.append("box holds protected text: \(box.contains("AWS_ACCESS_KEY_REMOVED") && box.contains("«PAN_1»")), raw values in box: \(raw.filter { box.contains($0) }.count)")
+        target.activate()
+        Thread.sleep(forTimeInterval: 0.5)
+        AX.set(input, kAXFocusedAttribute, kCFBooleanTrue)
+        Thread.sleep(forTimeInterval: 0.3)
+        for down in [true, false] { CGEvent(keyboardEventSource: CGEventSource(stateID: .hidSystemState), virtualKey: 36, keyDown: down)?.post(tap: .cghidEventTap) }
+        Thread.sleep(forTimeInterval: 8)
+        let texts = conversationText(app: app, excluding: input)
+        out.append("sent (box emptied): \(normalizedPromptText(adapter.readInput(input) ?? "").count < 20)")
+        out.append("placeholders in conversation: \(texts.contains("AWS_ACCESS_KEY_REMOVED"))")
+        out.append("raw values in conversation: before \(before), after \(raw.filter { texts.contains($0) }.count)")
+        return out
+    }
+}
+
+
+extension EndToEnd {
+    /// Puts the long prompt in the box (no send), lets MIRAGE draw its badge and underlines, reads
+    /// what it drew from the running MIRAGE's status, then puts the original text back.
+    static func liveMarks(bundleID: String) -> [String] {
+        guard let adapter = AdapterRegistry.adapter(forBundle: bundleID),
+              let target = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first else { return ["FAIL not running"] }
+        let app = AXUIElementCreateApplication(target.processIdentifier)
+        AXUIElementSetMessagingTimeout(app, 3)
+        adapter.prepare(app: app)
+        target.activate()
+        Thread.sleep(forTimeInterval: 1)
+        guard let input = adapter.inputElement(app: app) else { return ["FAIL input not found"] }
+        let original = adapter.readInput(input) ?? ""
+        guard adapter.replaceInput(input, with: longPrompt) == .verified else { return ["FAIL could not put the prompt in the box"] }
+        Thread.sleep(forTimeInterval: 2)
+        let status = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0].appendingPathComponent("Logs/MIRAGE/debug/status.txt")
+        DistributedNotificationCenter.default().postNotificationName(.init("dev.mirage.debug.capture"), object: nil, userInfo: nil, deliverImmediately: true)
+        Thread.sleep(forTimeInterval: 0.5)
+        let line = ((try? String(contentsOf: status, encoding: .utf8)) ?? "").split(separator: "\n").first { $0.hasPrefix("live=") }.map(String.init) ?? "live=?"
+        _ = adapter.replaceInput(input, with: original)
+        return ["target=\(adapter.displayName) action=live", line, "prompt box frame (AX): \(AX.frame(input).map { "\(Int($0.minX)),\(Int($0.minY)) \(Int($0.width))x\(Int($0.height))" } ?? "?")"]
     }
 }

@@ -34,6 +34,14 @@ struct MenuBarView: View {
                 .padding(10).background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
             }
 
+            Button {
+                windows.show(.compose)
+            } label: {
+                Label("Private Compose", systemImage: "square.and.pencil").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .help("Write in MIRAGE; only the protected text goes into ChatGPT or Claude (⌥⌘M)")
+
             VStack(alignment: .leading, spacing: 6) {
                 Text("TODAY").font(.caption2.weight(.semibold)).tracking(1).foregroundStyle(.secondary)
                 HStack(spacing: 8) {

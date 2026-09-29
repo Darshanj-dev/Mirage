@@ -59,13 +59,16 @@ struct DecisionView: View {
     @ViewBuilder
     private func review(_ d: Decision) -> some View {
         let items = Array(d.analysis.findings.enumerated())
-        Text(summary(d)).font(.subheadline).foregroundStyle(.secondary)
-        VStack(spacing: 0) {
-            ForEach(items, id: \.element.id) { i, f in
-                row(d, i, f)
-                if i < items.count - 1 { Divider() }
+        Text(summary(d)).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        ScrollView {
+            VStack(spacing: 0) {
+                ForEach(items, id: \.element.id) { i, f in
+                    row(d, i, f)
+                    if i < items.count - 1 { Divider() }
+                }
             }
         }
+        .frame(maxHeight: reviewing ? 300 : 220) // long prompts scroll: the panel always fits the screen
         .background(.background.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(.quaternary))
 

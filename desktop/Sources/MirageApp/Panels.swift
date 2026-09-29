@@ -49,19 +49,36 @@ final class PanelPresenter {
         return panel
     }
 
-    /// Bottom-centre of the screen the mouse is on, above the Dock: where AI composers live.
+    /// Right above the AI app's prompt box, centred on it, like the extension's panel; fully on
+    /// screen (below the box's top if there is no room above). Falls back to the screen's bottom.
+    private func placeAboveBox(_ panel: NSPanel) {
+        guard let box = controller.promptBoxFrame else { place(panel, offset: 160); return }
+        let cocoaBox = ScreenCoords.toCocoa(box)
+        let screen = NSScreen.screens.first { $0.frame.intersects(cocoaBox) } ?? NSScreen.main
+        guard let frame = screen?.visibleFrame else { return }
+        let size = panel.frame.size
+        var x = cocoaBox.midX - size.width / 2
+        var y = cocoaBox.maxY + 10
+        if y + size.height > frame.maxY - 8 { y = frame.maxY - size.height - 8 }
+        x = min(max(x, frame.minX + 8), frame.maxX - size.width - 8)
+        y = max(y, frame.minY + 8)
+        panel.setFrameOrigin(NSPoint(x: x, y: y))
+    }
+
+    /// Bottom-centre of the screen the mouse is on, above the Dock, always fully on screen.
     private func place(_ panel: NSPanel, offset: CGFloat) {
         let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
         guard let frame = screen?.visibleFrame else { return }
         let size = panel.frame.size
-        panel.setFrameOrigin(NSPoint(x: frame.midX - size.width / 2, y: frame.minY + offset))
+        let y = min(max(frame.minY + offset, frame.minY + 8), frame.maxY - size.height - 8)
+        panel.setFrameOrigin(NSPoint(x: frame.midX - size.width / 2, y: max(frame.minY + 8, y)))
     }
 
     private func showDecision(_ open: Bool) {
         if open {
             let panel = decisionPanel ?? makePanel(DecisionView(controller: controller), key: true)
             decisionPanel = panel
-            place(panel, offset: 160)
+            placeAboveBox(panel)
             panel.orderFrontRegardless()
             panel.makeKey()
             holdToPanelMs = (CFAbsoluteTimeGetCurrent() - controller.lastHoldAt) * 1000

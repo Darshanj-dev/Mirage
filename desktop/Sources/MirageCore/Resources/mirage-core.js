@@ -922,7 +922,7 @@ var MirageCore = (function(exports) {
 	/** Capitalized words that follow "I'm", "Dear", "Mr." and so on but are not names. */
 	var NOT_NAMES = new Set("i the a an sir madam mam maam team all everyone there friend friends customer customers hiring manager indian american british hindu muslim christian sikh jain buddhist catholic english hindi tamil kannada telugu malayalam bengali marathi gujarati punjabi urdu not very so just also still really here back sure sorry fine good ok okay new happy glad trying looking using working writing going getting having planning currently unable confused stuck interested from in at on with for to and or but your my our this that monday tuesday wednesday thursday friday saturday sunday january february march april may june july august september october november december chatgpt gemini claude copilot perplexity ai bot siri alexa google python java javascript react world user admin support sales hr it ceo cto doctor professor student teacher hod principal dean officer director applicant candidate guest members colleagues folks guys ma am".split(" "));
 	/** One to three capitalized words (Unicode letters), read at a fixed position (sticky). */
-	var NAME_AT = /(\p{Lu}[\p{Ll}'’-]+(?:\s+\p{Lu}[\p{Ll}'’-]+){0,2})/uy;
+	var NAME_AT = /(\p{Lu}[\p{Ll}'’-]+(?:[ \t]+\p{Lu}[\p{Ll}'’-]+){0,2})/uy;
 	var NAME_TRIGGERS = [
 		{
 			pattern: /\b(?:my name is|my name's|name\s*[:-]|named)\s*/gi,

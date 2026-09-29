@@ -78,6 +78,15 @@ public final class MirageCoreEngine: @unchecked Sendable {
         return Protection(text: raw.text, hidden: raw.hidden, removed: raw.removed)
     }
 
+    /// What protect() would produce right now, without remembering any placeholder (for previews).
+    public func previewProtect(_ text: String, settings: DetectionSettings = .init(), keep: [Int] = []) throws -> Protection {
+        let state: Any = tokenStateObject() ?? NSNull()
+        let data = try call("protect", [text, settings.jsonObject, state, keep])
+        struct Raw: Decodable { let text: String; let hidden: Int; let removed: Int }
+        let raw = try JSONDecoder().decode(Raw.self, from: data)
+        return Protection(text: raw.text, hidden: raw.hidden, removed: raw.removed)
+    }
+
     public func checkReply(_ text: String, settings: DetectionSettings = .init()) throws -> Analysis {
         try JSONDecoder().decode(Analysis.self, from: call("checkReply", [text, settings.jsonObject, [String]()]))
     }

@@ -13,11 +13,16 @@ final class AppModel: ObservableObject {
     let controller = ProtectionController()
     let windows: WindowManager
     private(set) var presenter: PanelPresenter?
+    private var overlay: OverlayPresenter?
+    private let hotkey = Hotkey()
 
     private init() {
         windows = WindowManager(controller: controller)
         controller.start()
         presenter = PanelPresenter(controller: controller)
+        overlay = OverlayPresenter(controller: controller)
+        let windows = windows
+        hotkey.register { windows.show(.compose) }
     }
 }
 

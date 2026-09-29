@@ -64,7 +64,8 @@ final class StoreTests: XCTestCase {
 
 final class TextTests: XCTestCase {
     func testNormalizedPromptTextIgnoresLineEndingsAndOddSpaces() {
-        XCTAssertEqual(normalizedPromptText("a\r\nb\u{00A0}c \n"), "a\nb c")
+        XCTAssertEqual(normalizedPromptText("a\r\nb\u{00A0}c \n"), "a b c")
+        XCTAssertEqual(normalizedPromptText("Line one\n\nLine two"), normalizedPromptText("Line one\nLine two")) // blank lines
         XCTAssertEqual(normalizedPromptText("\u{FFFC}hello"), "hello")
     }
 }

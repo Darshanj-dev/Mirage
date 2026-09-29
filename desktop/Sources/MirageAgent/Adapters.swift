@@ -94,18 +94,20 @@ open class TextAreaAdapter: DesktopAIAdapter {
 
     open func readInput(_ input: AXElement) -> String? { AX.value(input) }
 
-    /// Waits until the box has stopped changing, then reports whether it shows `want`.
-    /// Editors like Electron's apply writes asynchronously; deciding before the box settles lets a
-    /// late write land after MIRAGE has moved on (seen live on ChatGPT 26.924). A result counts
-    /// only once three reads 120 ms apart agree. Gives up after `timeout`.
+    /// Reports whether the box shows `want`, waiting for the app to catch up.
+    /// Apps process typed text at their own pace (ChatGPT on a long prompt: a few hundred
+    /// characters per second), and some apply writes late. So: true as soon as the box matches;
+    /// false only when it has not changed for 600 ms and still differs, or the time is up.
+    /// The time allowed grows with the length of the text.
     public func settles(_ input: AXElement, to want: String, timeout: TimeInterval = 2.0) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
+        let deadline = Date().addingTimeInterval(timeout + Double(want.count) / 150)
         var last: String?
-        var stable = 0
+        var unchangedSince = Date()
         repeat {
             let now = normalizedPromptText(readInput(input) ?? "")
-            if now == last { stable += 1 } else { stable = 0; last = now }
-            if stable >= 2 { return now == want }
+            if now == want { return true }
+            if now != last { last = now; unchangedSince = Date() }
+            else if Date().timeIntervalSince(unchangedSince) > 0.6 { return false }
             Thread.sleep(forTimeInterval: 0.08) // callers run this off the main thread
         } while Date() < deadline
         return false
@@ -147,9 +149,11 @@ open class TextAreaAdapter: DesktopAIAdapter {
             AX.set(input, kAXFocusedAttribute, kCFBooleanTrue)
             wrote = true
             guard KeyPoster.selectAll(to: pid) else { return false }
-            // A blank box is restored by deleting, not by typing its line breaks back in.
-            let typedOK = want.isEmpty ? KeyPoster.deleteSelection(to: pid) : KeyPoster.type(text.trimmingCharacters(in: .newlines), to: pid)
-            guard typedOK else { return false }
+            // A blank box is restored by deleting. Otherwise the text is PASTED: typing key by key
+            // lost characters on long prompts (ChatGPT dropped keystrokes after ~140 characters),
+            // while a paste is one input event the editor handles whole, at any length.
+            let ok = want.isEmpty ? KeyPoster.deleteSelection(to: pid) : KeyPoster.paste(text.trimmingCharacters(in: .newlines), to: pid)
+            guard ok else { return false }
             return self.settles(input, to: want)
         }
         let strategies = typesText ? [("typed", typed)] :
@@ -206,6 +210,42 @@ public enum KeyPoster {
         return true
     }
 
+    /// A left click at a screen point, marked as MIRAGE's own (the gate lets it through).
+    public static func click(at p: CGPoint) {
+        for type in [CGEventType.leftMouseDown, .leftMouseUp] {
+            guard let e = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: p, mouseButton: .left) else { continue }
+            e.setIntegerValueField(.eventSourceUserData, value: marker)
+            e.post(tap: .cghidEventTap)
+        }
+    }
+
+    /// Pastes `text` with Command-V, then puts the user's own clipboard back. Only the text MIRAGE
+    /// is inserting (the protected prompt) is ever on the clipboard, for about half a second.
+    public static func paste(_ text: String, to pid: pid_t) -> Bool {
+        let board = NSPasteboard.general
+        let saved: [NSPasteboardItem] = (board.pasteboardItems ?? []).map { item in
+            let copy = NSPasteboardItem()
+            for type in item.types { if let data = item.data(forType: type) { copy.setData(data, forType: type) } }
+            return copy
+        }
+        board.clearContents()
+        guard board.setString(text, forType: .string),
+              let down = CGEvent(keyboardEventSource: nil, virtualKey: 9, keyDown: true),
+              let up = CGEvent(keyboardEventSource: nil, virtualKey: 9, keyDown: false) else { return false }
+        let changeAfterSet = board.changeCount
+        down.flags = .maskCommand
+        up.flags = .maskCommand
+        post([down, up], to: pid)
+        // Give the app time to read the clipboard, then restore the user's (unless something
+        // else has replaced it in the meantime).
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.6) {
+            guard board.changeCount == changeAfterSet else { return }
+            board.clearContents()
+            if !saved.isEmpty { board.writeObjects(saved) }
+        }
+        return true
+    }
+
     /// Delete (backspace) the current selection.
     public static func deleteSelection(to pid: pid_t) -> Bool {
         guard let down = CGEvent(keyboardEventSource: nil, virtualKey: 51, keyDown: true),
@@ -225,31 +265,6 @@ public enum KeyPoster {
         return true
     }
 
-    /// Types `text` as keyboard input, 16 characters per event (the most one event carries).
-    /// Line breaks are typed as Shift-Return, so they never send the message half-way.
-    public static func type(_ text: String, to pid: pid_t) -> Bool {
-        for (i, line) in text.components(separatedBy: "\n").enumerated() {
-            if i > 0 {
-                guard let down = CGEvent(keyboardEventSource: nil, virtualKey: 36, keyDown: true),
-                      let up = CGEvent(keyboardEventSource: nil, virtualKey: 36, keyDown: false) else { return false }
-                down.flags = .maskShift
-                up.flags = .maskShift
-                post([down, up], to: pid)
-            }
-            var units = Array(line.utf16)
-            while !units.isEmpty {
-                let chunk = Array(units.prefix(16))
-                units.removeFirst(chunk.count)
-                guard let down = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true),
-                      let up = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false) else { return false }
-                down.keyboardSetUnicodeString(stringLength: chunk.count, unicodeString: chunk)
-                up.keyboardSetUnicodeString(stringLength: chunk.count, unicodeString: chunk)
-                post([down, up], to: pid)
-                usleep(4_000)
-            }
-        }
-        return true
-    }
 }
 
 public enum AdapterRegistry {
