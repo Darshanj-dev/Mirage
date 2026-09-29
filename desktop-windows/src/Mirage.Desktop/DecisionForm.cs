@@ -18,7 +18,18 @@ internal sealed class DecisionForm : Form
     private readonly LinkLabel _anyway = new() { Text = "Send anyway", AutoSize = true };
     private bool _reviewing;
 
-    protected override bool ShowWithoutActivation => false;
+    // Opened while typing: shown without taking the keyboard, so typing goes on in the AI app.
+    protected override bool ShowWithoutActivation => _decision?.Early == true;
+
+    protected override CreateParams CreateParams
+    {
+        get
+        {
+            var cp = base.CreateParams;
+            if (_decision?.Early == true) cp.ExStyle |= 0x08000000; // WS_EX_NOACTIVATE: clicks work, focus stays
+            return cp;
+        }
+    }
 
     public DecisionForm(ProtectionController controller, Decision decision)
     {
@@ -101,10 +112,25 @@ internal sealed class DecisionForm : Form
     protected override void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
-        // Bottom-centre of the screen with the AI app, above the taskbar: where the prompt box is.
+        // Right above the prompt box, centred on it, like the extension; fully on screen. Without
+        // the box: bottom-centre of the app's screen, above the taskbar.
         var screen = Screen.FromHandle(_decision.Window).WorkingArea;
-        Location = new Point(screen.Left + (screen.Width - Width) / 2, screen.Bottom - Height - 140);
-        Activate();
+        int x, y;
+        if (_decision.Box is { IsEmpty: false } box && box.Width > 0)
+        {
+            x = (int)(box.Left + box.Width / 2 - Width / 2.0);
+            y = (int)box.Top - Height - 10;
+            screen = Screen.FromPoint(new Point((int)(box.Left + box.Width / 2), (int)(box.Top + box.Height / 2))).WorkingArea;
+        }
+        else
+        {
+            x = screen.Left + (screen.Width - Width) / 2;
+            y = screen.Bottom - Height - 140;
+        }
+        x = Math.Max(screen.Left + 8, Math.Min(x, screen.Right - Width - 8));
+        y = Math.Max(screen.Top + 8, Math.Min(y, screen.Bottom - Height - 8));
+        Location = new Point(x, y);
+        if (!_decision.Early) Activate();
     }
 
     private void BuildItems()

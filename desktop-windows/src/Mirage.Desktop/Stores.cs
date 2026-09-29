@@ -14,6 +14,8 @@ internal sealed class DesktopSettings
     public Dictionary<string, bool> Apps { get; set; } = new() { ["ChatGpt"] = true, ["Claude"] = true };
     public DetectionSettings Detection { get; set; } = new();
     public PolicySettings Policy { get; set; } = new();
+    /// Open the review as soon as something sensitive is typed, not only on Enter.
+    public bool ReviewWhileTyping { get; set; } = true;
     public bool AppEnabled(AppId id) => Apps.TryGetValue(id.ToString(), out var on) && on;
 }
 

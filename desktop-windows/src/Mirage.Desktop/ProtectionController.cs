@@ -22,6 +22,10 @@ internal sealed class Decision
     public required AutomationElement? Input { get; init; }
     public required IntPtr Window { get; init; }
     public bool Unreadable { get; init; }
+    /// Opened while typing (not by a held send): the window doesn't take the keyboard.
+    public bool Early { get; init; }
+    /// The prompt box on screen (physical pixels), so the window opens right above it.
+    public Rect? Box { get; init; }
     public HashSet<int> Keep { get; } = new();
 }
 
@@ -38,6 +42,13 @@ internal sealed class ProtectionController : IDisposable
     private AutomationElement? _lastInput;
     private Rect? _inputRect, _sendRect;
     private AutomationFocusChangedEventHandler? _focusHandler;
+    // Review while typing: the prompt box is read a few times a second while ChatGPT or Claude is
+    // in front (that box only; nothing else, and nothing is kept after it is analysed).
+    private readonly System.Windows.Forms.Timer _poll = new() { Interval = 200 };
+    private volatile bool _polling;
+    private string? _pollText;
+    private Analysis? _pollAnalysis;
+    private readonly HashSet<string> _earlyShown = new(); // memory only, never logged
 
     public DesktopSettings Settings { get; private set; }
     public Stats Stats { get; }
@@ -64,6 +75,11 @@ internal sealed class ProtectionController : IDisposable
     {
         try { Core = new MirageCoreEngine(); CoreStatus = "Running"; }
         catch { Core = null; CoreStatus = "Failed to load"; }
+        // Warm the detector up now, so the first check isn't the slow one (the JavaScript engine
+        // compiles on first use).
+        if (Core is { } warm) Task.Run(() => { try { warm.Analyze("Warm-up: PAN ABCDE1234F, mail demo@example.com, 9876543210"); } catch { } });
+        _poll.Tick += (_, _) => Poll();
+        _poll.Start();
         _gate.OnHold = OnHold;
         _gate.ShouldHoldClick = ShouldHoldClick;
         _gate.Install();
@@ -135,6 +151,7 @@ internal sealed class ProtectionController : IDisposable
     /// Clicks on the send button, or near the prompt box (not inside it), are held and checked.
     private bool ShouldHoldClick(int x, int y)
     {
+        if (Native.IsOwnWindowAt(x, y)) return false; // MIRAGE's own window: its buttons must work
         var p = new System.Windows.Point(x, y);
         if (_sendRect is { } s && Inflate(s, 4).Contains(p)) return true;
         if (_inputRect is { } i && !i.Contains(p) && Inflate(i, 150).Contains(p)) return true;
@@ -156,10 +173,12 @@ internal sealed class ProtectionController : IDisposable
                 AutomationElement? input;
                 if (trigger == Trigger.Return)
                 {
+                    // The box the user is typing in; if focus is reported on something else inside
+                    // the app, the last prompt box, then a search: never let a Return through unchecked.
                     var focused = Uia.Focused();
-                    if (focused == null) { Open(front, Analysis.Empty, "", _lastInput, unreadable: true); return; }
-                    if (Uia.ProcessId(focused) != front.App.Pid || !front.Adapter.IsInput(focused)) { Pass(trigger, x, y); return; }
-                    input = focused;
+                    if (focused != null && Uia.ProcessId(focused) == front.App.Pid && front.Adapter.IsInput(focused)) input = focused;
+                    else input = _lastInput ?? Uia.FindInput(front.App.Window, front.Adapter);
+                    if (input == null && focused != null && Uia.ProcessId(focused) == front.App.Pid) { Pass(trigger, x, y); return; } // no prompt box in this window
                 }
                 else
                 {
@@ -208,9 +227,9 @@ internal sealed class ProtectionController : IDisposable
         if (trigger == Trigger.Return) KeyPoster.Return(); else KeyPoster.Click(x, y);
     }
 
-    private void Open((DesktopAIAdapter Adapter, FrontApp App) front, Analysis analysis, string text, AutomationElement? input, bool unreadable)
+    private void Open((DesktopAIAdapter Adapter, FrontApp App) front, Analysis analysis, string text, AutomationElement? input, bool unreadable, bool early = false)
     {
-        var d = new Decision { Adapter = front.Adapter, Analysis = analysis, Original = text, Input = input, Window = front.App.Window, Unreadable = unreadable };
+        var d = new Decision { Adapter = front.Adapter, Analysis = analysis, Original = text, Input = input, Window = front.App.Window, Unreadable = unreadable, Early = early, Box = _inputRect };
         _ui.Post(_ =>
         {
             Current = d;
@@ -218,6 +237,60 @@ internal sealed class ProtectionController : IDisposable
             DecisionOpened?.Invoke(d);
         }, null);
     }
+
+    // ---------------------------------------------------------------- review while typing
+
+    /// Opens the review as soon as the prompt has something to hide, once typing pauses (like the
+    /// extension), not only on Enter. While it is open every Return and send click is held. Once
+    /// per set of details: after Cancel it comes back only for something new.
+    private void Poll()
+    {
+        if (_polling || _front is not { } front || Core is not { } core || !Settings.ReviewWhileTyping) return;
+        if (Current is { Early: false }) return; // a held send is being decided
+        if (Current == null && _gate.DecisionOpen) return; // a held send is being checked
+        if (_lastInput is not { } input) return;
+        _polling = true;
+        var settings = Settings;
+        var previous = _pollText;
+        Task.Run(() =>
+        {
+            string? text = null;
+            Analysis? analysis = null;
+            try
+            {
+                text = front.Adapter.Read(input);
+                if (text != null && text != previous) analysis = core.Analyze(text, settings.Detection, settings.Policy);
+            }
+            catch { text = null; }
+            _ui.Post(_ => { _polling = false; Polled(front, input, text, analysis); }, null);
+        });
+    }
+
+    private void Polled((DesktopAIAdapter Adapter, FrontApp App) front, AutomationElement input, string? text, Analysis? analysis)
+    {
+        if (_front?.App.Pid != front.App.Pid || text == null) return;
+        if (text != _pollText)
+        {
+            // Still typing: wait for a pause. An open early review follows the prompt.
+            _pollText = text;
+            _pollAnalysis = analysis;
+            var any = analysis != null && analysis.Actionable.Any();
+            if (!any) _earlyShown.Clear();
+            if (Current is { Early: true } open)
+            {
+                if (!any) Close();
+                else if (!Keys(open.Analysis).SetEquals(Keys(analysis!))) { Current = null; Open(front, analysis!, text, input, unreadable: false, early: true); }
+            }
+            return;
+        }
+        if (Current != null || _pollAnalysis is not { } a || !a.Actionable.Any()) return;
+        var keys = Keys(a);
+        if (keys.IsSubsetOf(_earlyShown)) return;
+        _earlyShown.UnionWith(keys);
+        Open(front, a, text, input, unreadable: false, early: true);
+    }
+
+    private static HashSet<string> Keys(Analysis a) => a.Actionable.Select(f => f.Type + "\u0001" + f.Value).ToHashSet();
 
     // ---------------------------------------------------------------- decisions
 
@@ -359,6 +432,7 @@ internal sealed class ProtectionController : IDisposable
 
     public void Dispose()
     {
+        _poll.Stop();
         StopFocusWatch();
         _gate.Dispose();
         _monitor.Dispose();

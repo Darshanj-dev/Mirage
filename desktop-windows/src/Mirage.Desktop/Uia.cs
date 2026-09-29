@@ -27,6 +27,30 @@ internal static class Uia
         try { return $"{el.Current.Name} {el.Current.HelpText}".Trim().ToLowerInvariant(); } catch { return ""; }
     }
 
+    /// The prompt box in an app window when focus doesn't say: an editable control, preferring the
+    /// adapter's composer labels. Bounded; used only when a held Return has no other box to check.
+    public static AutomationElement? FindInput(IntPtr window, DesktopAIAdapter adapter)
+    {
+        if (window == IntPtr.Zero) return null;
+        return Try(() =>
+        {
+            var root = AutomationElement.FromHandle(window);
+            var found = root.FindAll(TreeScope.Descendants, new OrCondition(
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit),
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Document)));
+            AutomationElement? first = null;
+            var n = 0;
+            foreach (AutomationElement el in found)
+            {
+                if (++n > 40) break;
+                if (!IsEditable(el)) continue;
+                if (adapter.LooksLikeComposer(el)) return el;
+                first ??= el;
+            }
+            return first;
+        });
+    }
+
     public static bool IsEditable(AutomationElement el)
     {
         try

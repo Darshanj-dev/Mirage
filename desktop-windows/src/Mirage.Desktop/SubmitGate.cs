@@ -48,7 +48,7 @@ internal sealed class SubmitGate : IDisposable
         if (nCode >= 0 && Armed && (int)wParam is WM_KEYDOWN or WM_SYSKEYDOWN)
         {
             var k = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
-            if (k.dwExtraInfo != KeyPoster.Marker && k.vkCode == VK_RETURN && !IsDown(VK_SHIFT) && !IsDown(VK_CONTROL) && !IsDown(VK_MENU))
+            if (k.dwExtraInfo != KeyPoster.Marker && k.vkCode == VK_RETURN && !OwnWindowInFront() && !IsDown(VK_SHIFT) && !IsDown(VK_CONTROL) && !IsDown(VK_MENU))
             {
                 if (!DecisionOpen) SynchronizationContext.Current?.Post(_ => OnHold?.Invoke(Trigger.Return, 0, 0), null);
                 return (IntPtr)1; // held: the app never sees it

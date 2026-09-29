@@ -73,6 +73,9 @@ internal sealed class TrayApp : ApplicationContext
         var protection = new ToolStripMenuItem("Protection") { Checked = s.ProtectionOn };
         protection.Click += (_, _) => _controller.Update(x => x.ProtectionOn = !x.ProtectionOn);
         menu.Items.Add(protection);
+        var early = new ToolStripMenuItem("Review as soon as something sensitive is typed") { Checked = s.ReviewWhileTyping };
+        early.Click += (_, _) => _controller.Update(x => x.ReviewWhileTyping = !x.ReviewWhileTyping);
+        menu.Items.Add(early);
         var login = new ToolStripMenuItem("Start MIRAGE at sign-in") { Checked = s.StartAtLogin };
         login.Click += (_, _) => _controller.Update(x => x.StartAtLogin = !x.StartAtLogin);
         menu.Items.Add(login);

@@ -51,6 +51,25 @@ internal static class Native
     [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int vk);
     [DllImport("user32.dll", SetLastError = true)] public static extern uint SendInput(uint count, INPUT[] inputs, int size);
     [DllImport("user32.dll")] public static extern int GetSystemMetrics(int index);
+    [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(POINT p);
+
+    /// True when the window under a screen point (physical pixels) is one of MIRAGE's own.
+    public static bool IsOwnWindowAt(int x, int y)
+    {
+        var hwnd = WindowFromPoint(new POINT { X = x, Y = y });
+        if (hwnd == IntPtr.Zero) return false;
+        GetWindowThreadProcessId(hwnd, out var pid);
+        return pid == (uint)Environment.ProcessId;
+    }
+
+    /// True when MIRAGE's own window is in front (its keys, like Enter on Protect & Send, are its own).
+    public static bool OwnWindowInFront()
+    {
+        var hwnd = GetForegroundWindow();
+        if (hwnd == IntPtr.Zero) return false;
+        GetWindowThreadProcessId(hwnd, out var pid);
+        return pid == (uint)Environment.ProcessId;
+    }
 
     public static bool IsDown(int vk) => (GetAsyncKeyState(vk) & 0x8000) != 0;
 }
