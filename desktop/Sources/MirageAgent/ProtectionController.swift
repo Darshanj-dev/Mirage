@@ -140,7 +140,7 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
 
     /// Reason codes of the gate's decisions, appended to ~/Library/Logs/MIRAGE/gate.log: codes and
     /// times only (never text), so a failed attempt can be explained.
-    private func trace(_ code: String) {
+    public func trace(_ code: String) {
         let line = "\(ISO8601DateFormatter().string(from: Date())) \(code)\n"
         axQueue.async {
             let dir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0].appendingPathComponent("Logs/MIRAGE", isDirectory: true)

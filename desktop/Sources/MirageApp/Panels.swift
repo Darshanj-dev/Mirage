@@ -32,8 +32,34 @@ final class PanelPresenter {
             return NSApp.windows.contains { $0.isVisible && !$0.ignoresMouseEvents && $0.frame.contains(p) }
         }
         controller.$decision.map { $0 != nil }.removeDuplicates().sink { [weak self] open in self?.showDecision(open) }.store(in: &bag)
+        controller.$decision.dropFirst().sink { [weak self] d in
+            guard d != nil else { return }
+            DispatchQueue.main.async { self?.fitDecisionPanel() }
+        }.store(in: &bag)
         controller.$replyAlert.sink { [weak self] alert in self?.showReply(alert) }.store(in: &bag)
         controller.$toast.sink { [weak self] toast in self?.showToast(toast) }.store(in: &bag)
+    }
+
+    /// The size a panel's SwiftUI content needs, measured explicitly. (Automatic sizing left the
+    /// decision panel at 0 × 0: shown, but invisible. Seen live.)
+    static func measure(_ view: NSView, width: CGFloat?) -> NSSize {
+        view.frame = NSRect(x: 0, y: 0, width: width ?? 600, height: 2000)
+        view.layoutSubtreeIfNeeded()
+        var size = view.fittingSize
+        if let width { size.width = width }
+        if size.width < 40 || size.height < 40 { size = NSSize(width: width ?? 440, height: 420) }
+        return size
+    }
+
+    /// Sizes the decision panel to its content (440 wide), then places it above the prompt box.
+    private func fitDecisionPanel() {
+        guard let panel = decisionPanel, let view = panel.contentView else { return }
+        let size = Self.measure(view, width: 476) // DecisionView is 440 wide plus its padding
+        let maxHeight = (NSScreen.main?.visibleFrame.height ?? 800) - 40
+        let final = NSSize(width: size.width, height: min(size.height, maxHeight))
+        panel.setContentSize(final)
+        view.frame = NSRect(origin: .zero, size: final) // the view exactly fills the panel
+        placeAboveBox(panel)
     }
 
     private func makePanel<V: View>(_ view: V, key: Bool) -> FloatingPanel {
@@ -48,11 +74,14 @@ final class PanelPresenter {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         // The hosting controller sizes the panel from its SwiftUI content, and keeps it sized as
         // the content changes (e.g. Review expanding): never a zero-size panel.
-        let controller = NSHostingController(rootView: view)
-        controller.sizingOptions = [.preferredContentSize]
-        panel.contentViewController = controller
-        controller.view.layoutSubtreeIfNeeded()
-        panel.setContentSize(controller.view.fittingSize)
+        // A hosting VIEW with automatic sizing off: MIRAGE sets the size. (A hosting controller kept
+        // resetting the panel to 0 × 0: shown but invisible. Seen live.)
+        let host = NSHostingView(rootView: view)
+        host.sizingOptions = []
+        panel.contentView = host
+        let size = Self.measure(host, width: nil)
+        panel.setContentSize(size)
+        host.frame = NSRect(origin: .zero, size: size)
         return panel
     }
 
@@ -87,7 +116,7 @@ final class PanelPresenter {
         if open {
             let panel = decisionPanel ?? makePanel(DecisionView(controller: controller), key: true)
             decisionPanel = panel
-            placeAboveBox(panel)
+            fitDecisionPanel()
             panel.orderFrontRegardless()
             panel.makeKey()
             // The panel sizes itself to its content after it appears (and again when Review opens),
@@ -97,10 +126,18 @@ final class PanelPresenter {
                     MainActor.assumeIsolated { if let self, let panel { self.placeAboveBox(panel) } }
                 }
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self, weak panel] in
-                if let self, let panel { self.placeAboveBox(panel) }
-            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in self?.fitDecisionPanel() }
             holdToPanelMs = (CFAbsoluteTimeGetCurrent() - controller.lastHoldAt) * 1000
+            let heldAt = controller.lastHoldAt
+            for delay in [0.0, 0.3, 1.0] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self, weak panel] in
+                    guard let self, let panel else { return }
+                    let f = panel.frame
+                    let onScreen = NSScreen.screens.contains { $0.visibleFrame.insetBy(dx: -2, dy: -2).contains(f) }
+                    self.controller.trace(String(format: "panel +%.0fms visible=%@ size=%.0fx%.0f onScreen=%@",
+                        (CFAbsoluteTimeGetCurrent() - heldAt) * 1000, panel.isVisible ? "yes" : "no", f.width, f.height, onScreen ? "yes" : "no"))
+                }
+            }
         } else {
             if let o = resizeObserver { NotificationCenter.default.removeObserver(o) }
             resizeObserver = nil
