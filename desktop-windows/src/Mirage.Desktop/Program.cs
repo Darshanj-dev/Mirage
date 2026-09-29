@@ -60,7 +60,7 @@ internal static class Program
             return "ok";
         });
         lines.Add(ok ? "RESULT PASS" : "RESULT FAIL");
-        File.WriteAllLines(output, lines);
+        System.IO.File.WriteAllLines(output, lines);
         return ok ? 0 : 1;
     }
 }
