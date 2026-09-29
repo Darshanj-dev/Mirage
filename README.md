@@ -4,15 +4,19 @@
 
 ## Download
 
-| | |
-|---|---|
-| **Windows — Chrome or Edge** | [**MIRAGE-Chrome-Setup.exe**](https://github.com/Darshanj-dev/Mirage/releases/latest) · run it, then follow the 4-step guide it opens (Chrome asks you to allow extensions from outside its store once: *Developer mode → Load unpacked*) |
-| Chrome / Edge on any OS | `mirage-*-chrome.zip` from [Releases](https://github.com/Darshanj-dev/Mirage/releases/latest) · unzip → `chrome://extensions` → Developer mode → Load unpacked |
-| Firefox | `mirage-*-firefox.zip` from [Releases](https://github.com/Darshanj-dev/Mirage/releases/latest) · `about:debugging` → Load Temporary Add-on |
-| Windows desktop app for the ChatGPT / Claude apps (**beta**) | [**MIRAGE-Desktop-Windows-Setup.exe**](https://github.com/Darshanj-dev/Mirage/releases/tag/windows-desktop-v1.0.0-beta) · built and core-tested on Windows by GitHub Actions, not yet tested against ChatGPT/Claude on Windows · source on the [`desktop-windows`](https://github.com/Darshanj-dev/Mirage/tree/desktop-windows) branch |
-| macOS desktop app (ChatGPT / Claude apps) | Build from source: [`desktop/DEVELOPMENT.md`](desktop/DEVELOPMENT.md) |
+Pick the row for what you use. Everything runs **on your device**; nothing needs an account.
 
-The Windows installers need no administrator rights and are not code-signed yet, so Windows SmartScreen may say "Windows protected your PC": choose **More info → Run anyway**.
+| Platform | Protects | Download | How to install | Status |
+|---|---|---|---|---|
+| **Windows** · ChatGPT & Claude **desktop apps** | Prompts typed in the ChatGPT and Claude apps | [**Install-MIRAGE-Desktop.bat**](https://github.com/Darshanj-dev/Mirage/releases/download/windows-desktop-v1.0.0-beta/Install-MIRAGE-Desktop.bat) (one click) · or [the setup .exe](https://github.com/Darshanj-dev/Mirage/releases/download/windows-desktop-v1.0.0-beta/MIRAGE-Desktop-Windows-Setup-1.0.0-beta.exe) | Double-click the `.bat`: it downloads the installer, checks its SHA-256 fingerprint and runs it. MIRAGE then lives in the notification area | Beta · built and self-tested on Windows by GitHub Actions; not yet tried with the ChatGPT/Claude apps on Windows |
+| **Windows** · Chrome or Edge | ChatGPT, Gemini, Claude, Copilot, Perplexity websites | [**MIRAGE-Chrome-Setup-1.0.0.exe**](https://github.com/Darshanj-dev/Mirage/releases/download/v1.0.0/MIRAGE-Chrome-Setup-1.0.0.exe) | Run it, then follow the 4-step guide it opens (*Developer mode → Load unpacked*, once) | Stable |
+| Chrome / Edge · any OS | Same websites | [mirage-1.0.0-chrome.zip](https://github.com/Darshanj-dev/Mirage/releases/download/v1.0.0/mirage-1.0.0-chrome.zip) | Unzip → `chrome://extensions` → Developer mode → Load unpacked | Stable |
+| Firefox · any OS | Same websites | [mirage-1.0.0-firefox.zip](https://github.com/Darshanj-dev/Mirage/releases/download/v1.0.0/mirage-1.0.0-firefox.zip) | `about:debugging` → This Firefox → Load Temporary Add-on | Stable |
+| **macOS** · ChatGPT & Claude desktop apps | Prompts typed in the ChatGPT and Claude apps | Build from source | [`desktop/DEVELOPMENT.md`](desktop/DEVELOPMENT.md) | Tested live on ChatGPT for Mac |
+
+**Windows says "Windows protected your PC"?** The installers are not code-signed yet: choose **More info → Run anyway**. They need no administrator rights.
+
+**Browser warns about the `.bat` download?** Choose *Keep*. It is plain text; open it in Notepad to see exactly what it does.
 
 ## What's in this repository
 
@@ -21,7 +25,7 @@ The Windows installers need no administrator rights and are not code-signed yet,
 | `lib/`, `components/`, `entrypoints/` | The browser extension (WXT, TypeScript, React) |
 | `lib/detector/`, `lib/risk.ts`, `lib/core/` | **MIRAGE Core**: detection, risk score, masking — shared by the extension and the desktop app |
 | `desktop/` | macOS desktop companion for the ChatGPT and Claude apps (Swift) — [architecture](desktop/DESKTOP_ARCHITECTURE.md), [supported apps](desktop/SUPPORTED_APPS.md) |
-| `installers/windows/` | Windows installer for the extension (Inno Setup, built by GitHub Actions) |
+| `installers/windows/` | Windows installers: the extension (Inno Setup, built by GitHub Actions) and `Install-MIRAGE-Desktop.bat` for the desktop companion |
 | `docs/` | [Audit report](docs/audit-report.md), [detection & risk score](docs/detection.md), [roadmap](docs/ROADMAP.md), product specs |
 | `test-prompts/`, `e2e/` | Detector evaluation corpus and live end-to-end checks |
 
