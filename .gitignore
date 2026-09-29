@@ -36,3 +36,6 @@ desktop/.build/
 dist/
 # Unfinished CLI draft, kept locally
 cli/
+desktop-windows/publish/
+desktop-windows/**/bin/
+desktop-windows/**/obj/

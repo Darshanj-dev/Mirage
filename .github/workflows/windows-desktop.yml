@@ -1,0 +1,56 @@
+# Windows desktop companion (beta): core tests, build, installer.
+# On every push to the desktop-windows branch the installer is an artifact of the run; running it
+# by hand with "publish" (Actions tab → Windows desktop → Run workflow) also attaches it to a
+# pre-release on the Releases page.
+name: Windows desktop
+
+on:
+  push:
+    branches: [desktop-windows]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Attach the installer to a pre-release'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run build:core
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: 8.0.x }
+      - name: Core tests (the shared detector running in Jint)
+        run: dotnet test desktop-windows/tests/Mirage.Core.Tests --logger "console;verbosity=normal"
+      - name: Publish (self-contained, single file)
+        run: dotnet publish desktop-windows/src/Mirage.Desktop -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o desktop-windows/publish
+      - name: Installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup --no-progress -y }
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          & $iscc "/DAppVersion=$version" installers\windows\mirage-desktop.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem dist
+      - uses: actions/upload-artifact@v4
+        with: { name: mirage-desktop-windows, path: dist/*.exe }
+      - name: Attach to a pre-release
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          TAG=windows-desktop-v1.0.0-beta
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --prerelease --target "$GITHUB_SHA" \
+            --title "MIRAGE desktop for Windows 1.0.0 (beta)" \
+            --notes "Beta: built and core-tested on Windows by GitHub Actions; not yet tested against the ChatGPT or Claude apps on Windows. Protects prompts in the ChatGPT and Claude desktop apps. Windows SmartScreen may warn because the installer is not code-signed yet: More info → Run anyway."
+          gh release upload "$TAG" dist/*.exe --clobber

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- MIRAGE desktop companion for Windows: a notification-area app that protects prompts in
+       the ChatGPT and Claude desktop apps. Port of desktop/ (macOS); same MIRAGE Core. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF> <!-- for System.Windows.Automation (UI Automation client) -->
+    <RootNamespace>Mirage.Desktop</RootNamespace>
+    <AssemblyName>MIRAGE</AssemblyName>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <Version>1.0.0</Version>
+    <Product>MIRAGE</Product>
+    <Company>Team Nexora</Company>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Mirage.Core\Mirage.Core.csproj" />
+  </ItemGroup>
+</Project>

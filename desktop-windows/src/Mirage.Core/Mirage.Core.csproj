@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- MIRAGE Core for .NET: runs the shared TypeScript core (lib/core/api.ts, bundled by
+       `npm run build:core`) inside Jint, a JavaScript engine written in .NET. The browser
+       extension, the macOS app and this Windows app all run the same detector. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Mirage.Core</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Jint" Version="3.*" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\..\desktop\Sources\MirageCore\Resources\mirage-core.js" LogicalName="mirage-core.js" />
+  </ItemGroup>
+</Project>
