@@ -109,7 +109,7 @@ final class OverlayPresenter {
         let badge = badgePanel ?? panel(ScreenCoords.toCocoa(badgeRect), clickThrough: false)
         badgePanel = badge
         badge.setFrame(ScreenCoords.toCocoa(badgeRect), display: true)
-        badge.contentView = NSHostingView(rootView: BadgeView(live: live, open: { [weak controller] in controller?.reviewNow() }))
+        badge.contentView = FirstClickHostingView(rootView: BadgeView(live: live, open: { [weak controller] in controller?.reviewNow() }))
         if controller.decision == nil { badge.orderFrontRegardless() }
     }
 }

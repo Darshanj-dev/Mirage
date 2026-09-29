@@ -9,6 +9,14 @@ import MirageAgent
 enum DebugHooks {
     static func install(model: AppModel) {
         guard CommandLine.arguments.contains("--debug-hooks") else { return }
+        // Main-thread stalls (input waits on the main thread's event tap): logged when > 100 ms.
+        var expected = CFAbsoluteTimeGetCurrent() + 0.05
+        Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { _ in
+            let now = CFAbsoluteTimeGetCurrent()
+            let late = (now - expected) * 1000
+            expected = now + 0.05
+            if late > 100 { MainActor.assumeIsolated { model.controller.trace(String(format: "main-stall %.0fms", late)) } }
+        }
         DistributedNotificationCenter.default().addObserver(forName: .init("dev.mirage.debug.capture"), object: nil, queue: .main) { _ in
             MainActor.assumeIsolated { capture(model: model) }
         }
