@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MIRAGE Tech Stack</title>
+<style>
+  @page { size: A4; margin: 14mm; }
+  :root { --ink:#0f172a; --muted:#475569; --line:#e2e8f0; --sunk:#f8fafc; --blue:#2563eb; }
+  * { box-sizing: border-box; }
+  body { font: 10.2pt/1.45 -apple-system, "Helvetica Neue", Arial, sans-serif; color: var(--ink); margin: 0; }
+  h1 { font-size: 22pt; margin: 0; letter-spacing: -0.02em; }
+  h2 { font-size: 12.5pt; margin: 14px 0 6px; padding-bottom: 3px; border-bottom: 2px solid var(--ink); break-after: avoid; }
+  p { margin: 4px 0; }
+  .sub { color: var(--muted); margin-bottom: 10px; }
+  .say { border-left: 4px solid var(--blue); background: var(--sunk); padding: 9px 12px; border-radius: 0 8px 8px 0; font-size: 10.8pt; break-inside: avoid; }
+  .say b { color: var(--blue); }
+  .lbl { font-size: 8pt; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin: 8px 0 3px; }
+  table { width: 100%; border-collapse: collapse; font-size: 9.2pt; margin: 4px 0; }
+  th, td { border: 1px solid var(--line); padding: 5px 7px; text-align: left; vertical-align: top; }
+  th { background: var(--sunk); font-size: 8.2pt; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  td:first-child { font-weight: 700; white-space: nowrap; }
+  tr { break-inside: avoid; }
+  .flow { font: 8.8pt/1.5 "SF Mono", Menlo, monospace; background: var(--ink); color: #f8fafc; padding: 9px 12px; border-radius: 8px; white-space: pre; }
+  .qa td:first-child { white-space: normal; width: 33%; }
+</style>
+</head>
+<body>
+
+<h1>MIRAGE · Tech Stack</h1>
+<p class="sub">What to say when the judges ask "What's your tech stack?"</p>
+
+<h2>Say this (30 seconds)</h2>
+<div class="say">
+"MIRAGE is <b>one detection engine in TypeScript</b>, and we run the <b>same engine in three products</b>.
+The <b>browser extension</b> is built with <b>WXT and React</b> on Manifest V3.
+The <b>desktop companion</b> is native: <b>Swift and SwiftUI</b> on Mac, using Apple's <b>Accessibility API</b> to read the ChatGPT app's message box, and <b>C# .NET</b> on Windows with <b>UI Automation</b>. Both run our engine inside a built-in JavaScript engine.
+The <b>CLI</b> is <b>Node.js</b> for developers.
+Detection is ours: <b>checksums</b> like Verhoeff for Aadhaar and Luhn for cards, <b>entropy</b> for API keys, and <b>context rules</b>, which give a risk score from 0 to 100.
+Real values are stored <b>AES-GCM encrypted</b> on the device for 24 hours. There is <b>no server</b>: nothing leaves the device except the protected prompt."
+</div>
+
+<h2>One engine, three products</h2>
+<div class="flow">                    MIRAGE Core  (TypeScript · detect → score → mask)
+                                     │
+        ┌────────────────────────────┼────────────────────────────┐
+  Browser extension         Desktop companion                    CLI
+  WXT · React 19            Mac: Swift · JavaScriptCore          Node.js · commander
+  Chrome/Edge/Firefox       Windows: C# .NET 8 · Jint            Win / Mac / Linux</div>
+
+<h2>The stack</h2>
+<table>
+  <tr><th>Part</th><th>Technology</th><th>Why</th></tr>
+  <tr><td>Detection engine</td><td>TypeScript (strict), zero dependencies, bundled with Vite into one file</td><td>Write once, run everywhere; the same code gives the same results in every product</td></tr>
+  <tr><td>How it detects</td><td>Text clean-up (hidden characters, look-alike letters, Indian digits) → regex + checksums (Verhoeff, Luhn, PAN rules) → Shannon entropy → context words → risk score</td><td>Checksums mean random numbers aren't flagged; no AI model needed, so it's fast and private</td></tr>
+  <tr><td>Browser extension</td><td>WXT (Manifest V3), React 19, Shadow DOM for the UI in chat pages</td><td>Works on ChatGPT, Gemini, Claude, Copilot, Perplexity; the chat page can't restyle or read MIRAGE's UI</td></tr>
+  <tr><td>Desktop, Mac</td><td>Swift 6, SwiftUI + AppKit, Accessibility API, CGEventTap, JavaScriptCore</td><td>Native app; reads only the AI app's message box; holds Enter until you decide</td></tr>
+  <tr><td>Desktop, Windows</td><td>C# .NET 8, WinForms, UI Automation, Jint (JavaScript engine for .NET)</td><td>The same engine on Windows; installed with one .bat file</td></tr>
+  <tr><td>CLI (Ninad)</td><td>Node.js 20, TypeScript, commander, tsup</td><td>For developers who paste logs and code into AI; works with Claude Code, Codex and the clipboard</td></tr>
+  <tr><td>Security</td><td>AES-GCM encryption (Web Crypto; Node crypto for the CLI), values expire after 24 hours, secrets never stored</td><td>Real values stay on the device and are encrypted at rest</td></tr>
+  <tr><td>Testing and CI</td><td>Vitest, Puppeteer end-to-end tests, a 181-prompt evaluation set, GitHub Actions</td><td>F1 0.998; 0.05 ms per prompt; the Windows build is tested on Windows automatically</td></tr>
+  <tr><td>Installers</td><td>Inno Setup (Windows .exe), .bat installer with a SHA-256 check, GitHub Releases</td><td>Friends can install with one click</td></tr>
+</table>
+
+<h2>If they ask more</h2>
+<table class="qa">
+  <tr><th>Question</th><th>Answer</th></tr>
+  <tr><td>Why not use an AI model to detect?</td><td>Speed and privacy. Rules with checksums run in 0.05 ms on the device, need no internet, and every result can be explained ("Why 100?"). A model would need a server or a big download.</td></tr>
+  <tr><td>How do you run one engine on Mac, Windows and the browser?</td><td>The engine is plain TypeScript bundled into one JavaScript file. The browser runs it directly, the Mac runs it in JavaScriptCore, Windows in Jint, and the CLI in Node.</td></tr>
+  <tr><td>How does the desktop app see ChatGPT's text?</td><td>Through the operating system's accessibility interface (the same one screen readers use), and only for the message box of ChatGPT and Claude. No keylogger, no screen recording.</td></tr>
+  <tr><td>Is there a backend?</td><td>No. No server, no account, no database. Only the protected prompt goes to the AI.</td></tr>
+  <tr><td>What's encrypted?</td><td>The map from placeholder to real value (e.g. «PAN_1» → the real PAN), AES-GCM, on the device, deleted after 24 hours. Secrets like API keys are never stored at all.</td></tr>
+</table>
+
+</body>
+</html>
