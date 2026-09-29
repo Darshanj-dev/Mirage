@@ -59,6 +59,16 @@ enum DebugHooks {
             view.cacheDisplay(in: view.bounds, to: rep)
             try? rep.representation(using: .png, properties: [:])?.write(to: dir.appendingPathComponent("window-\(i).png"))
         }
+        for window in NSApp.windows where window.isVisible && window.frame.width > 300 && window is FloatingPanel {
+            func dump(_ v: NSView, _ depth: Int) {
+                guard depth < 6 else { return }
+                lines.append(String(repeating: "  ", count: depth) + "\(type(of: v)) frame=\(v.frame) bounds=\(v.bounds) hidden=\(v.isHidden) layer=\(v.layer.map { "\($0.frame) opacity=\($0.opacity)" } ?? "nil")")
+                for sub in v.subviews.prefix(8) { dump(sub, depth + 1) }
+            }
+            lines.append("panel frame=\(window.frame) alpha=\(window.alphaValue) occlusion=\(window.occlusionState.contains(.visible))")
+            if let v = window.contentView { dump(v, 0); lines.append("fitting=\(v.fittingSize)") }
+            if let superview = window.contentView?.superview { lines.append("frameView=\(type(of: superview)) \(superview.frame)") }
+        }
         try? lines.joined(separator: "\n").write(to: dir.appendingPathComponent("status.txt"), atomically: true, encoding: .utf8)
     }
 }

@@ -43,6 +43,7 @@ public enum EndToEnd {
         if action == "compose" { return compose(bundleID: bundleID) }
         if action == "live" { return liveMarks(bundleID: bundleID) }
         if action == "human" { return human(bundleID: bundleID) }
+        if action == "typeonly" { return typeOnly(bundleID: bundleID) }
         guard let adapter = AdapterRegistry.adapter(forBundle: bundleID),
               let target = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first else { return ["FAIL \(bundleID) not running"] }
         guard let mirage = NSRunningApplication.runningApplications(withBundleIdentifier: "dev.mirage.desktop")
@@ -300,6 +301,39 @@ extension EndToEnd {
 
     /// Everything as a person does it, no shortcuts: click into the box, type on the keyboard,
     /// press Return, click Protect & Send with the mouse. Then check what the app got.
+    /// Types a prompt with personal data and presses nothing; captures MIRAGE's windows at
+    /// 0.1 / 0.3 / 1 s after the last key (to see what the user sees, and when).
+    static func typeOnly(bundleID: String) -> [String] {
+        guard let adapter = AdapterRegistry.adapter(forBundle: bundleID),
+              let target = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first else { return ["FAIL not running"] }
+        let app = AXUIElementCreateApplication(target.processIdentifier)
+        AXUIElementSetMessagingTimeout(app, 3)
+        adapter.prepare(app: app)
+        target.activate()
+        Thread.sleep(forTimeInterval: 1)
+        guard let input = adapter.inputElement(app: app), let box = AX.frame(input) else { return ["FAIL input not found"] }
+        _ = adapter.replaceInput(input, with: "")
+        Thread.sleep(forTimeInterval: 0.8)
+        hidClick(CGPoint(x: box.midX, y: box.midY))
+        Thread.sleep(forTimeInterval: 0.4)
+        hidType("My PAN is BNZPM2501K")
+        let start = Date()
+        var out = ["typed; captures follow"]
+        let dir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0].appendingPathComponent("Logs/MIRAGE/debug")
+        for (i, at) in [0.1, 0.3, 1.0].enumerated() {
+            Thread.sleep(forTimeInterval: max(0, at - Date().timeIntervalSince(start)))
+            DistributedNotificationCenter.default().postNotificationName(.init("dev.mirage.debug.capture"), object: nil, userInfo: nil, deliverImmediately: true)
+            Thread.sleep(forTimeInterval: 0.25)
+            let files = (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []
+            for f in files where f.hasPrefix("window-") {
+                try? FileManager.default.copyItem(at: dir.appendingPathComponent(f), to: dir.appendingPathComponent("t\(i)-\(f)"))
+            }
+            let status = (try? String(contentsOf: dir.appendingPathComponent("status.txt"), encoding: .utf8)) ?? ""
+            out.append("t+\(at)s: " + status.split(separator: "\n").filter { $0.hasPrefix("decisionPanel=") || $0.hasPrefix("window ") }.joined(separator: " | "))
+        }
+        return out
+    }
+
     static func human(bundleID: String) -> [String] {
         guard let adapter = AdapterRegistry.adapter(forBundle: bundleID),
               let target = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first else { return ["FAIL not running"] }
@@ -316,6 +350,9 @@ extension EndToEnd {
         hidClick(CGPoint(x: box.midX, y: box.midY))
         Thread.sleep(forTimeInterval: 0.4)
         hidType(text)
+        let typedFormat = ISO8601DateFormatter()
+        typedFormat.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        out.append("last key typed at \(typedFormat.string(from: Date()))")
         Thread.sleep(forTimeInterval: 1.5)
         let typed = adapter.readInput(input) ?? ""
         out.append("typed into the box: \(normalizedPromptText(typed) == normalizedPromptText(text) ? "all" : "\(typed.count) of \(text.count) chars")")
@@ -345,7 +382,7 @@ extension EndToEnd {
               case let f = line.dropFirst("decisionPanel=".count).split(separator: ",").compactMap({ Double($0) }), f.count == 4 else { return out + ["FAIL no popup"] }
         let h = NSScreen.screens.first?.frame.height ?? 0
         out.append("popup at \(line.dropFirst(14)) (on screen: \(f[1] >= 0 && f[1] + f[3] <= h))")
-        hidClick(CGPoint(x: f[0] + f[2] - 18 - 55, y: h - (f[1] + 18 + 12)))
+        hidClick(CGPoint(x: f[0] + f[2] - 18 - 55, y: h - (f[1] + 18 + 22))) // centre of Protect & Send
         let clickFormat = ISO8601DateFormatter()
         clickFormat.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         out.append("clicked Protect & Send at \(clickFormat.string(from: Date()))")

@@ -55,7 +55,12 @@ final class PanelPresenter {
             return NSApp.windows.contains { $0.isVisible && !$0.ignoresMouseEvents && $0.frame.contains(p) }
         }
         // (@Published sends before the property changes: read `early` from the new value, not the controller.)
-        controller.$decision.map { $0.map { $0.early } }.removeDuplicates().sink { [weak self] d in self?.showDecision(d != nil, early: d == true) }.store(in: &bag)
+        // Built right after the value lands, never inside @Published's willSet: DecisionView reads
+        // controller.decision, and a panel built during willSet rendered EMPTY (a blank window
+        // until some later change redrew it — the "slow popup", measured: no subviews, fitting 0).
+        controller.$decision.map { $0.map { $0.early } }.removeDuplicates().sink { [weak self] d in
+            DispatchQueue.main.async { self?.showDecision(d != nil, early: d == true) }
+        }.store(in: &bag)
         controller.$decision.dropFirst().sink { [weak self] d in
             guard d != nil else { return }
             DispatchQueue.main.async { self?.fitDecisionPanel() }
@@ -146,6 +151,7 @@ final class PanelPresenter {
             // shown, and typing went into it), so typing continues in the AI app. Clicks still work.
             panel.allowsKey = !early
             if !early { panel.makeKey() }
+
             // The panel sizes itself to its content after it appears (and again when Review opens),
             // growing downwards: re-place it on every size change so it is always fully on screen.
             if resizeObserver == nil {

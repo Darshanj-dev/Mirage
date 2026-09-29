@@ -5,6 +5,7 @@ What changed, per part of MIRAGE. Newest first. Downloads: [README → Download]
 ## Desktop companion — macOS (`desktop/`)
 
 **2026-09-29**
+- Fixed: the review window opened EMPTY and only showed its contents after a later change (the "slow popup"). It now shows everything at once, 0.14 s after the last key (measured from the real keystroke, 3 runs in ChatGPT), and Protect & Send works on the first click (starts ~0.08 s after it).
 - The review opens **0.14 s after you stop typing** when the prompt has something sensitive (measured with real typing in ChatGPT 26.924; it was 0.75 s). It doesn't take the keyboard, follows the prompt as you type, and closes when the sensitive part is deleted.
 - The first click on the popup works (a popup that isn't focused ignored its first click).
 - "MIRAGE active" badge on the ChatGPT / Claude message box, with an on/off switch in the menu bar and Settings. It turns amber or red when something will be hidden; click it to reopen the review.
