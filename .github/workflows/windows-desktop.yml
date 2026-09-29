@@ -32,6 +32,12 @@ jobs:
         run: dotnet test desktop-windows/tests/Mirage.Core.Tests --logger "console;verbosity=normal"
       - name: Publish (self-contained, single file)
         run: dotnet publish desktop-windows/src/Mirage.Desktop -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o desktop-windows/publish
+      - name: Smoke test on Windows (core, hooks, UI Automation, settings)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath desktop-windows\publish\MIRAGE.exe -ArgumentList '--selftest', "$env:RUNNER_TEMP\selftest.txt" -PassThru -Wait
+          Get-Content "$env:RUNNER_TEMP\selftest.txt"
+          if ($p.ExitCode -ne 0) { exit 1 }
       - name: Installer
         shell: pwsh
         run: |
