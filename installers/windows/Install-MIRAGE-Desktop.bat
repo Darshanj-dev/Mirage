@@ -6,7 +6,7 @@ setlocal EnableExtensions
 title MIRAGE - desktop companion installer
 
 set "URL=https://github.com/Darshanj-dev/Mirage/releases/download/windows-desktop-v1.0.0-beta/MIRAGE-Desktop-Windows-Setup-1.0.0-beta.exe"
-set "SHA256=1dec93c7e82a4ca96241a33a5208ad86bd252a1cfea20ea95739fa88e657a3bc"
+set "SHA256=0eaca71af91566b5317f4d15acafd6893a2b1c9436c7c6e360f5639c4158ee10"
 set "OUT=%TEMP%\MIRAGE-Desktop-Windows-Setup.exe"
 
 echo.
