@@ -17,7 +17,7 @@ export function t(key: StringKey, subs: readonly (string | number)[] = []): stri
   }
 }
 
-type CountKey = 'badge_found' | 'preview_footer' | 'quick_chip' | 'popup_cleared' | 'review_title';
+type CountKey = 'badge_found' | 'preview_footer' | 'quick_chip' | 'popup_cleared' | 'review_title' | 'compose_found';
 
 /** Picks the `_one` variant for a count of 1, so text reads "1 item", not "1 items". */
 export function tCount(key: CountKey, n: number): string {
@@ -31,7 +31,7 @@ export const typeName = (type: FindingType): string => (isSecretType(type) ? sec
 export function findingName(f: Pick<Finding, 'type' | 'kind'>): string {
   if (f.kind) return t(`kind_${f.kind}`);
   if (isSecretType(f.type)) return secretName(f.type);
-  if (f.type === 'AADHAAR' || f.type === 'PAN' || f.type === 'BANK_ACCOUNT') return t(`article_${f.type}`);
+  if (f.type === 'AADHAAR' || f.type === 'PAN' || f.type === 'BANK_ACCOUNT' || f.type === 'PASSPORT') return t(`article_${f.type}`);
   return typeName(f.type).toLowerCase();
 }
 

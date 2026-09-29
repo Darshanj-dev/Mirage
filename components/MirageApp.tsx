@@ -1,6 +1,9 @@
 // Everything MIRAGE shows inside the chatbot page, rendered in a Shadow DOM.
 
 import { useEffect, useRef, useState } from 'react';
+import { browser } from 'wxt/browser';
+import { isInsertProtected } from '@/lib/messages';
+import { insertProtected } from '@/lib/page/insertProtected';
 import { isSecretType, type Finding } from '@/lib/detector/types';
 import { sendMessage } from '@/lib/messages';
 import type { SendGuard } from '@/lib/page/sendGuard';
@@ -86,6 +89,24 @@ export function MirageApp({ site, guard }: { site: SiteConfig; guard: SendGuard 
     }, HOVER_GRACE_MS);
     return () => clearTimeout(timer);
   }, [hover]);
+
+  // Private Compose: the panel sends the prompt to this content script (never to the page).
+  useEffect(() => {
+    const listener = (msg: unknown, sender: { id?: string }) => {
+      if (sender.id !== browser.runtime.id || !isInsertProtected(msg)) return undefined;
+      const current = watcher.settingsRef.current;
+      if (!current?.enabled) return Promise.resolve({ ok: false, error: 'off' });
+      return insertProtected(site, msg.text, msg.keep, current);
+    };
+    browser.runtime.onMessage.addListener(listener);
+    return () => {
+      try {
+        browser.runtime.onMessage.removeListener(listener);
+      } catch {
+        // extension context already gone
+      }
+    };
+  }, [site, watcher.settingsRef]);
 
   // First run: pulse the badge once, then remember it was shown.
   const [pulse, setPulse] = useState(false);

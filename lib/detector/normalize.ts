@@ -18,6 +18,7 @@ export function normalizeValue(type: FindingType, value: string): string {
       return v.replace(/\D/g, '').slice(-10);
     case 'PAN':
     case 'IFSC':
+    case 'PASSPORT':
       return v.toUpperCase();
     case 'EMAIL':
       // "priya [at] example [dot] com" is priya@example.com.
@@ -31,6 +32,7 @@ export function normalizeValue(type: FindingType, value: string): string {
     case 'NAME':
     case 'CUSTOM':
     case 'DOB':
+    case 'ADDRESS':
     case 'HEALTH':
     case 'API_KEY':
     case 'PRIVATE_KEY':

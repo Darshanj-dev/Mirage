@@ -992,29 +992,67 @@ var MirageCore = (function(exports) {
 	* the user is told why.
 	*/
 	var HEALTH_TERMS = new RegExp(String.raw`\b(?:HbA1c|A1c|blood sugar|fasting sugar|glucose level|cholesterol|triglycerides|blood pressure|thyroid|TSH|haemoglobin|hemoglobin|creatinine|platelets?|biopsy|diagnos(?:ed|is)|prescri(?:bed|ption)|HIV|hepatitis|tuberculosis|cancer|tumou?r|chemotherapy|diabet(?:es|ic)|hypertension|asthma|depression|anxiety disorder|bipolar|schizophrenia|pregnan(?:t|cy)|miscarriage|IVF|STD|STI|lab report|blood test|medical report|psychiatrist|antidepressants?|insulin|metformin|dialysis|epilepsy|PCOS|PCOD)\b`, "g");
+	var healthRule = {
+		type: "HEALTH",
+		policy: "warn",
+		confidence: .8,
+		reason: "pattern",
+		find: (text) => {
+			const lower = new RegExp(HEALTH_TERMS.source.replace(/\|HIV\|/, "|").replace(/\|STD\|STI\|/, "|"), "gi");
+			const seen = /* @__PURE__ */ new Set();
+			const out = [];
+			for (const m of [...matchAll(text, HEALTH_TERMS), ...matchAll(text, lower)]) {
+				if (seen.has(m.start)) continue;
+				seen.add(m.start);
+				out.push(m);
+			}
+			return out.sort((a, b) => a.start - b.start);
+		}
+	};
+	/**
+	* Passport numbers (Indian format: one letter, 7 digits, e.g. K1234567), only next to the word
+	* "passport": the shape alone is too common (order and ticket numbers).
+	*/
+	var passportRule = {
+		type: "PASSPORT",
+		policy: "mask",
+		confidence: .9,
+		reason: "context",
+		find: (text) => matchAll(text, /(?<![A-Za-z0-9])([A-PR-WYa-pr-wy][1-9]\d\s?\d{4}[1-9])(?![A-Za-z0-9])/g, 1).filter((m) => /\bpassport\b[^\n]{0,25}$/i.test(text.slice(Math.max(0, m.start - 60), m.start)))
+	};
+	var ADDRESS_WORDS = String.raw`(?:road|rd|street|st|nagar|layout|cross|main|sector|colony|lane|marg|block|phase|stage|apartments?|apts?|flat|floor|house|villa|society|towers?|residency|enclave|extension|extn|avenue|ave|circle|halli|palya|puram|pet|gunta|chowk|bazaar|gali)`;
+	var PIN = String.raw`[1-9]\d{2}\s?\d{3}`;
 	/** Context rules, lowest priority: an ID or secret always wins an overlap with them. */
 	var CONTEXT_RULES = [
 		bankAccountRule,
+		passportRule,
+		{
+			type: "ADDRESS",
+			policy: "mask",
+			confidence: .85,
+			reason: "pattern",
+			find: (text) => {
+				const labelled = matchAll(text, new RegExp(String.raw`\b(?:(?:my|home|office|delivery|postal|permanent|current|billing|shipping)\s+)?address(?:\s+is)?\s*[:\-]?\s*([^\n]{6,160}?\b${PIN})(?!\d)`, "gi"), 1).map((m) => ({
+					...m,
+					confidence: .92,
+					reason: "context"
+				}));
+				const street = matchAll(text, new RegExp(String.raw`(?<![\w])(?:#\s*)?(?:\d{1,4}[A-Za-z]?(?:[/-]\d{1,4})?,?\s+)?[^\n]{0,80}?\b${ADDRESS_WORDS}\b[^\n]{0,100}?\b${PIN}(?!\d)`, "gi")).map((m) => {
+					const lead = /(?:#\s*)?\d/.exec(m.value) ?? /\b[A-Z]/.exec(m.value);
+					const cut = lead ? lead.index : 0;
+					return {
+						start: m.start + cut,
+						end: m.end,
+						value: m.value.slice(cut)
+					};
+				}).filter((m) => m.value.includes(",") && m.value.length >= 15);
+				return [...labelled, ...street.filter((s) => !labelled.some((l) => s.start < l.end && l.start < s.end))];
+			}
+		},
 		dobRule,
 		ipRule,
 		nameRule,
-		{
-			type: "HEALTH",
-			policy: "warn",
-			confidence: .8,
-			reason: "pattern",
-			find: (text) => {
-				const lower = new RegExp(HEALTH_TERMS.source.replace(/\|HIV\|/, "|").replace(/\|STD\|STI\|/, "|"), "gi");
-				const seen = /* @__PURE__ */ new Set();
-				const out = [];
-				for (const m of [...matchAll(text, HEALTH_TERMS), ...matchAll(text, lower)]) {
-					if (seen.has(m.start)) continue;
-					seen.add(m.start);
-					out.push(m);
-				}
-				return out.sort((a, b) => a.start - b.start);
-			}
-		}
+		healthRule
 	];
 	//#endregion
 	//#region lib/detector/normalize.ts
@@ -1027,13 +1065,15 @@ var MirageCore = (function(exports) {
 			case "BANK_ACCOUNT": return v.replace(/\D/g, "");
 			case "PHONE": return v.replace(/\D/g, "").slice(-10);
 			case "PAN":
-			case "IFSC": return v.toUpperCase();
+			case "IFSC":
+			case "PASSPORT": return v.toUpperCase();
 			case "EMAIL": return v.toLowerCase().replace(/\s*[[({]\s*at\s*[\])}]\s*/g, "@").replace(/\s*[[({]\s*dot\s*[\])}]\s*/g, ".");
 			case "UPI":
 			case "IP_ADDRESS": return v.toLowerCase();
 			case "NAME":
 			case "CUSTOM":
 			case "DOB":
+			case "ADDRESS":
 			case "HEALTH":
 			case "API_KEY":
 			case "PRIVATE_KEY":
@@ -1058,6 +1098,8 @@ var MirageCore = (function(exports) {
 		AADHAAR: "high",
 		PAN: "high",
 		BANK_ACCOUNT: "high",
+		PASSPORT: "high",
+		ADDRESS: "medium",
 		PHONE: "medium",
 		UPI: "medium",
 		NAME: "medium",
@@ -1074,6 +1116,8 @@ var MirageCore = (function(exports) {
 		DOB: "identity",
 		NAME: "identity",
 		CUSTOM: "identity",
+		PASSPORT: "identity",
+		ADDRESS: "location",
 		PHONE: "contact",
 		EMAIL: "contact",
 		CARD: "financial",
@@ -1100,6 +1144,8 @@ var MirageCore = (function(exports) {
 		AADHAAR: 35,
 		PAN: 30,
 		BANK_ACCOUNT: 30,
+		PASSPORT: 30,
+		ADDRESS: 15,
 		DOB: 15,
 		UPI: 15,
 		PHONE: 12,
@@ -1243,6 +1289,8 @@ var MirageCore = (function(exports) {
 		"BANK_ACCOUNT",
 		"IP_ADDRESS",
 		"DOB",
+		"ADDRESS",
+		"PASSPORT",
 		"NAME",
 		"CUSTOM"
 	];
@@ -1259,13 +1307,19 @@ var MirageCore = (function(exports) {
 		"CUSTOM",
 		"AADHAAR",
 		"PAN",
+		"PASSPORT",
+		"ADDRESS",
 		"PHONE",
 		"EMAIL",
 		"DOB",
 		"BANK_ACCOUNT",
 		"UPI"
 	];
-	var GOVERNMENT_ID = ["AADHAAR", "PAN"];
+	var GOVERNMENT_ID = [
+		"AADHAAR",
+		"PAN",
+		"PASSPORT"
+	];
 	var CONTACT = ["PHONE", "EMAIL"];
 	var SEVERITY_RANK = {
 		low: 0,
@@ -1353,6 +1407,8 @@ var MirageCore = (function(exports) {
 		BANK_ACCOUNT: "ACCOUNT",
 		IP_ADDRESS: "IP",
 		DOB: "DOB",
+		ADDRESS: "ADDRESS",
+		PASSPORT: "PASSPORT",
 		NAME: "PERSON",
 		CUSTOM: "PERSON"
 	};

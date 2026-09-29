@@ -15,7 +15,8 @@
     "postinstall": "wxt prepare",
     "e2e": "node e2e/live.mjs",
     "eval": "vitest run lib/detector/eval.test.ts",
-    "build:core": "vite build --config vite.core.config.ts"
+    "build:core": "vite build --config vite.core.config.ts",
+    "e2e:compose": "node e2e/compose.mjs"
   },
   "dependencies": {
     "react": "^19.2.4",

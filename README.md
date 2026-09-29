@@ -9,9 +9,10 @@
 | **Windows — Chrome or Edge** | [**MIRAGE-Chrome-Setup.exe**](https://github.com/Darshanj-dev/Mirage/releases/latest) · run it, then follow the 4-step guide it opens (Chrome asks you to allow extensions from outside its store once: *Developer mode → Load unpacked*) |
 | Chrome / Edge on any OS | `mirage-*-chrome.zip` from [Releases](https://github.com/Darshanj-dev/Mirage/releases/latest) · unzip → `chrome://extensions` → Developer mode → Load unpacked |
 | Firefox | `mirage-*-firefox.zip` from [Releases](https://github.com/Darshanj-dev/Mirage/releases/latest) · `about:debugging` → Load Temporary Add-on |
+| Windows desktop app for the ChatGPT / Claude apps (**beta**) | [**MIRAGE-Desktop-Windows-Setup.exe**](https://github.com/Darshanj-dev/Mirage/releases/tag/windows-desktop-v1.0.0-beta) · built and core-tested on Windows by GitHub Actions, not yet tested against ChatGPT/Claude on Windows · source on the [`desktop-windows`](https://github.com/Darshanj-dev/Mirage/tree/desktop-windows) branch |
 | macOS desktop app (ChatGPT / Claude apps) | Build from source: [`desktop/DEVELOPMENT.md`](desktop/DEVELOPMENT.md) |
 
-The Windows installer needs no administrator rights and is not code-signed yet, so Windows SmartScreen may say "Windows protected your PC": choose **More info → Run anyway**.
+The Windows installers need no administrator rights and are not code-signed yet, so Windows SmartScreen may say "Windows protected your PC": choose **More info → Run anyway**.
 
 ## What's in this repository
 
@@ -34,6 +35,11 @@ WITH MIRAGE      Aadhaar · PAN · API key ─▶ MIRAGE (in your browser)
                                              ▼
                                    «AADHAAR_1» «PAN_1» «API_KEY_REMOVED» ─▶ AI provider
 ```
+
+## Two ways to use it
+
+- **Private Compose** (strongest): click MIRAGE → *Private Compose*, write your prompt in MIRAGE's side panel, and insert only the protected version into the chatbot. The chatbot's page never sees your raw text. Verified live on ChatGPT and Gemini: 0 raw values in the page, 0 in requests.
+- **Automatic** (convenient): type in the chatbot as usual; MIRAGE stops the send when it finds something and lets you protect it first. The chatbot's own page can see what you type in its box before you press Send.
 
 ## How it works
 

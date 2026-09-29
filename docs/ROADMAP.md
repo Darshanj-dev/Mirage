@@ -18,8 +18,8 @@ From an external review (September 2026), ordered in the phases the reviewer ask
 
 | # | Item | Status | Notes |
 |---|---|---|---|
-| 2.1 | Private Compose: write in an extension-owned side panel, scan, insert only the protected text | ⬜ | Today's interception mode lets the website read what is typed in its own box before MIRAGE acts (documented limit). |
-| 2.2 | Hover-only restoration by default | 🟡 | The setting exists ("Show real details in replies"). Default is still inline. |
+| 2.1 | Private Compose: write in an extension-owned side panel, scan, insert only the protected text | ✅ | Popup → **Private Compose**. Verified live (`npm run e2e:compose`) on ChatGPT and Gemini: raw values in the chatbot's page 0, in requests 0. |
+| 2.2 | Hover-only restoration by default | ✅ | Real details are no longer written into the chatbot's page unless the user turns on "Show real details in replies". |
 | 2.3 | Explain Quick mode, inline restoration and Send anyway | 🟡 | Settings hints exist; needs a clearer explanation page. |
 
 ## Phase 3 — Permissions and independent evaluation
@@ -34,9 +34,9 @@ From an external review (September 2026), ordered in the phases the reviewer ask
 
 | # | Item | Status | Notes |
 |---|---|---|---|
-| 4.1 | Street and postal addresses | ⬜ | |
+| 4.1 | Street and postal addresses | 🟡 | Indian addresses ending in a PIN code, or after "address:" (tested). Addresses without a PIN code: to do. |
 | 4.2 | Names without a lead-in phrase | ⬜ | Today: context phrases or the Always-hide list. |
-| 4.3 | Passport and institutional IDs | ⬜ | |
+| 4.3 | Passport and institutional IDs | 🟡 | Indian passport numbers next to the word "passport" (tested). Institutional IDs: to do. |
 | 4.4 | Lowercase PAN, unusual formatting | 🟡 | Lowercase PAN after the word "PAN"; Unicode look-alikes, zero-width and Indian digits handled. |
 | 4.5 | Secrets split across lines | ⬜ | |
 | 4.6 | More Indian languages | ⬜ | Indian-script digits are read; words are not. |

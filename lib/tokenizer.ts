@@ -16,6 +16,8 @@ const LABELS: Record<MaskType, string> = {
   BANK_ACCOUNT: 'ACCOUNT',
   IP_ADDRESS: 'IP',
   DOB: 'DOB',
+  ADDRESS: 'ADDRESS',
+  PASSPORT: 'PASSPORT',
   NAME: 'PERSON',
   CUSTOM: 'PERSON',
 };

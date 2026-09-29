@@ -204,3 +204,31 @@ export async function sendMessage<R extends Request>(request: R): Promise<Respon
     return { ok: false, error: err instanceof Error ? err.message : 'Message failed' };
   }
 }
+
+// ---------------------------------------------------------------- Private Compose (panel → page)
+
+/**
+ * Sent by the Private Compose panel to the content script of the chatbot tab. The raw prompt goes
+ * from MIRAGE's panel to MIRAGE's content script (the extension's isolated world), never into the
+ * page: the content script writes only the protected version into the chatbot's prompt box.
+ */
+export interface InsertProtectedCommand {
+  type: 'INSERT_PROTECTED';
+  text: string;
+  keep: number[]; // finding indexes the user chose to send as typed
+}
+
+export type InsertProtectedResult =
+  | { ok: true; hidden: number; removed: number }
+  | { ok: false; error: 'noPromptBox' | 'writeFailed' | 'tokenizeFailed' | 'off' };
+
+export function isInsertProtected(msg: unknown): msg is InsertProtectedCommand {
+  return (
+    isObject(msg) &&
+    msg.type === 'INSERT_PROTECTED' &&
+    isString(msg.text) &&
+    msg.text.length <= 100_000 &&
+    Array.isArray(msg.keep) &&
+    msg.keep.every((k) => typeof k === 'number')
+  );
+}

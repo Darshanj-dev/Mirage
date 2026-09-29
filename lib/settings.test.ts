@@ -81,7 +81,7 @@ describe('stats', () => {
     expect(s.blockSecrets).toBe(true);
     expect(s.categories.location).toBe(false);
     expect(s.categories.apiKeys).toBe(true);
-    expect(s.revealMode).toBe('inline');
+    expect(s.revealMode).toBe('hover'); // real details stay out of the page unless the user opts in
     expect(Object.values(s.sites).every(Boolean)).toBe(true);
   });
 

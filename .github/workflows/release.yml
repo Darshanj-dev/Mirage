@@ -50,8 +50,10 @@ jobs:
       - run: npm test
       - run: npm run zip
       - run: npm run zip -- -b firefox
+      # .output is a hidden folder, which upload-artifact skips: copy the zips out first.
+      - run: mkdir -p dist && cp .output/*-chrome.zip .output/*-firefox.zip dist/
       - uses: actions/upload-artifact@v4
-        with: { name: extension-zips, path: .output/*.zip }
+        with: { name: extension-zips, path: dist/*.zip }
 
   publish:
     needs: [windows-installer, extension-zips]

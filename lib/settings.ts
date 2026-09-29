@@ -69,7 +69,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   sites: { chatgpt: true, gemini: true, claude: true, copilot: true, perplexity: true },
   blockSecrets: true,
   categories: { identity: true, contact: true, financial: true, credentials: true, apiKeys: true, location: true, health: true },
-  revealMode: 'inline',
+  revealMode: 'hover', // real details never written into the chatbot's page unless the user opts in
   checkReplies: true,
 };
 
@@ -127,7 +127,7 @@ export function settingsWithDefaults(raw: unknown): Settings {
     categories: Object.fromEntries(
       CATEGORIES.map((c) => [c, bool(categories[c], DEFAULT_SETTINGS.categories[c])]),
     ) as Record<Category, boolean>,
-    revealMode: r.revealMode === 'hover' ? 'hover' : 'inline',
+    revealMode: r.revealMode === 'inline' ? 'inline' : 'hover',
     checkReplies: bool(r.checkReplies, DEFAULT_SETTINGS.checkReplies),
   };
 }

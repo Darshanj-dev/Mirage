@@ -20,7 +20,7 @@ Every finding carries: `type`, `start/end` (location), `confidence` (0–1), `se
 | Policy | Types | What happens |
 |---|---|---|
 | `block` (remove) | API keys and tokens, private keys, passwords, cards, OTPs | Replaced by a named, unnumbered placeholder like `«AWS_SECRET_KEY_REMOVED»`. Never stored, never put back. "Send anyway" needs a second confirm and is off while *Block secrets* is on. |
-| `mask` (hide) | Aadhaar, PAN, phone, email, UPI, IFSC, bank account, IP, date of birth, names, Always-hide terms | Replaced by a reversible placeholder like `«PAN_1»`; the real value is kept in the encrypted vault for 24 hours so the reply can show it. |
+| `mask` (hide) | Aadhaar, PAN, passport, phone, email, UPI, IFSC, bank account, postal address, IP, date of birth, names, Always-hide terms | Replaced by a reversible placeholder like `«PAN_1»`; the real value is kept in the encrypted vault for 24 hours so the reply can show it. |
 | `warn` (keep) | Health terms | Kept (the AI needs "HbA1c 7.9" to answer) but counted in the risk score. |
 
 Placeholders use `« »` rather than `<PAN_001>`: chat sites render replies as Markdown/HTML, and `<…>` is often dropped as an unknown tag. `«»` survives the round trip on ChatGPT, Gemini and Perplexity (checked live).
