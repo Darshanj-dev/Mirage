@@ -31,7 +31,8 @@ final class PanelPresenter {
             let p = NSPoint(x: axPoint.x, y: h - axPoint.y)
             return NSApp.windows.contains { $0.isVisible && !$0.ignoresMouseEvents && $0.frame.contains(p) }
         }
-        controller.$decision.map { $0 != nil }.removeDuplicates().sink { [weak self] open in self?.showDecision(open) }.store(in: &bag)
+        // (@Published sends before the property changes: read `early` from the new value, not the controller.)
+        controller.$decision.map { $0.map { $0.early } }.removeDuplicates().sink { [weak self] d in self?.showDecision(d != nil, early: d == true) }.store(in: &bag)
         controller.$decision.dropFirst().sink { [weak self] d in
             guard d != nil else { return }
             DispatchQueue.main.async { self?.fitDecisionPanel() }
@@ -112,13 +113,16 @@ final class PanelPresenter {
         panel.setFrameOrigin(NSPoint(x: frame.midX - size.width / 2, y: max(frame.minY + 8, y)))
     }
 
-    private func showDecision(_ open: Bool) {
+    private func showDecision(_ open: Bool, early: Bool) {
         if open {
-            let panel = decisionPanel ?? makePanel(DecisionView(controller: controller), key: true)
+            let panel = decisionPanel ?? makePanel(DecisionView(controller: controller), key: !early)
             decisionPanel = panel
             fitDecisionPanel()
             panel.orderFrontRegardless()
-            panel.makeKey()
+            // Opened while typing: the panel never takes the keyboard (it became key by itself when
+            // shown, and typing went into it), so typing continues in the AI app. Clicks still work.
+            panel.allowsKey = !early
+            if !early { panel.makeKey() }
             // The panel sizes itself to its content after it appears (and again when Review opens),
             // growing downwards: re-place it on every size change so it is always fully on screen.
             if resizeObserver == nil {

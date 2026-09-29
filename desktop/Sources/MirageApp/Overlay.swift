@@ -109,7 +109,7 @@ final class OverlayPresenter {
         let badge = badgePanel ?? panel(ScreenCoords.toCocoa(badgeRect), clickThrough: false)
         badgePanel = badge
         badge.setFrame(ScreenCoords.toCocoa(badgeRect), display: true)
-        badge.contentView = NSHostingView(rootView: BadgeView(live: live))
+        badge.contentView = NSHostingView(rootView: BadgeView(live: live, open: { [weak controller] in controller?.reviewNow() }))
         if controller.decision == nil { badge.orderFrontRegardless() }
     }
 }
@@ -159,6 +159,7 @@ private struct UnderlineView: View {
 
 private struct BadgeView: View {
     let live: LiveMarks
+    let open: () -> Void
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: live.hasSecret ? "exclamationmark.shield.fill" : live.count > 0 ? "shield.lefthalf.filled" : "shield")
@@ -169,7 +170,9 @@ private struct BadgeView: View {
         .padding(.horizontal, 10).padding(.vertical, 5)
         .background(.regularMaterial, in: Capsule())
         .overlay(Capsule().stroke(live.count == 0 ? Color.green.opacity(0.4) : live.level.color.opacity(0.5)))
+        .contentShape(Capsule())
+        .onTapGesture { if live.count > 0 { open() } }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-        .help(live.count == 0 ? "MIRAGE is watching this prompt." : "MIRAGE found: " + Set(live.names).sorted().joined(separator: ", ") + ". Nothing is sent until you choose.")
+        .help(live.count == 0 ? "MIRAGE is watching this prompt." : "MIRAGE found: " + Set(live.names).sorted().joined(separator: ", ") + ". Click to review. Nothing is sent until you choose.")
     }
 }

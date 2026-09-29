@@ -46,6 +46,9 @@ public struct Decision {
     public let unreadable: Bool
     public var keep: Set<Int> = []
     public var stage: DecisionStage = .review
+    /// Opened while typing (not by a held send): the panel doesn't take the keyboard, and it
+    /// follows the prompt as the user keeps typing.
+    public var early = false
     fileprivate let original: String
     fileprivate let appElement: AXElement
     fileprivate let input: AXElement?
@@ -232,6 +235,8 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
         checking = false
         lastInput = nil
         lastLiveText = nil
+        earlyTimer?.cancel()
+        earlyLatest = nil
         liveRisk = .safe
         if let app, let adapter = AdapterRegistry.adapter(forBundle: app.bundleID),
            adapter.status != .unsupported, settings.appEnabled(adapter.id), settings.protectionOn,
@@ -532,6 +537,57 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
     private let gateQueue = DispatchQueue(label: "dev.mirage.gate", qos: .userInteractive)
     private var lastLiveText: String?
 
+    // MARK: - review while typing
+
+    /// The review panel opens as soon as the prompt has something to hide (when the badge turns
+    /// amber or red), once typing pauses, not only on Enter. While it is open every Return and
+    /// Send click is held, so nothing leaves until the user chooses. It opens once per set of
+    /// details: after Cancel it comes back only for something new (or a click on the badge).
+    private var earlyShown: Set<String> = [] // in memory only, never logged
+    private var earlyTimer: DispatchWorkItem?
+    private var earlyLatest: (input: AXElement, text: String, analysis: Analysis)?
+
+    private func scheduleEarlyReview(front: (adapter: DesktopAIAdapter, pid: pid_t, app: AXElement), input: AXElement, text: String, analysis: Analysis?) {
+        earlyTimer?.cancel()
+        // An open early review follows the prompt: updated as the user types, closed when the
+        // sensitive details are gone.
+        if let d = decision, d.early, d.stage == .review, d.original != text {
+            if let analysis, !analysis.actionable.isEmpty {
+                decision = Decision(app: d.app, appName: d.appName, analysis: analysis, heldSubmission: true, unreadable: false, early: true, original: text, appElement: d.appElement, input: input)
+            } else {
+                decision = nil
+            }
+        }
+        guard let analysis, !analysis.actionable.isEmpty else { earlyShown = []; earlyLatest = nil; return }
+        earlyLatest = (input, text, analysis)
+        guard settings.reviewWhileTyping else { return }
+        let keys = Set(analysis.actionable.map { $0.type + "\u{1}" + $0.value })
+        guard !keys.isSubset(of: earlyShown) else { return }
+        let work = DispatchWorkItem { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.lastLiveText == text else { return }
+                self.earlyShown.formUnion(keys)
+                self.openReview(front: front, input: input, text: text, analysis: analysis, reason: "early-review")
+            }
+        }
+        earlyTimer = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: work)
+    }
+
+    /// Opens the review for what is in the prompt box now (the badge's click).
+    public func reviewNow() {
+        guard let front, let latest = earlyLatest, latest.text == lastLiveText else { return }
+        openReview(front: front, input: latest.input, text: latest.text, analysis: latest.analysis, reason: "badge-review", early: false)
+    }
+
+    private func openReview(front: (adapter: DesktopAIAdapter, pid: pid_t, app: AXElement), input: AXElement, text: String, analysis: Analysis, reason: String, early: Bool = true) {
+        guard decision == nil, !checking, self.front?.pid == front.pid else { return }
+        trace("\(reason) items=\(analysis.actionable.count)")
+        lastHoldAt = CFAbsoluteTimeGetCurrent()
+        // Nothing was submitted: the user hasn't sent, and sends are held while the panel is open.
+        decision = Decision(app: front.adapter.id, appName: front.adapter.displayName, analysis: analysis, heldSubmission: true, unreadable: false, early: early, original: text, appElement: front.app, input: input)
+    }
+
     private func refreshLiveRisk() {
         guard let front, let core else { liveRisk = .safe; live = nil; return }
         let settings = settings
@@ -566,6 +622,7 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
                     } else {
                         self.live = nil
                     }
+                    self.scheduleEarlyReview(front: front, input: input, text: text, analysis: analysis)
                 }
             }
         }

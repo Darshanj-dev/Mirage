@@ -18,6 +18,9 @@ public struct DesktopSettings: Codable, Equatable {
     /// (without the key) still load; nil means on.
     public var showActiveBadge: Bool?
     public var activeBadge: Bool { showActiveBadge ?? true }
+    /// Open the review as soon as something sensitive is typed, not only on Enter. nil means on.
+    public var reviewEarly: Bool?
+    public var reviewWhileTyping: Bool { reviewEarly ?? true }
     public init() {}
 
     public func appEnabled(_ id: AppID) -> Bool { apps[id] ?? false }

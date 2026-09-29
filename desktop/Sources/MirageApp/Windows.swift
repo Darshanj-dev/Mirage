@@ -167,6 +167,8 @@ private struct GeneralPane: View {
             Toggle("Start MIRAGE at login", isOn: Binding(get: { controller.settings.startAtLogin }, set: setLogin))
             if let loginError { Text(loginError).font(.caption).foregroundStyle(.orange) }
             Toggle("Check AI replies for secrets and ID numbers", isOn: bind(\.checkReplies))
+            Toggle("Open the review as soon as something sensitive is typed", isOn: Binding(
+                get: { controller.settings.reviewWhileTyping }, set: { v in controller.update { $0.reviewEarly = v } }))
             Toggle("Show “MIRAGE active” on the message box in ChatGPT and Claude", isOn: Binding(
                 get: { controller.settings.activeBadge }, set: { v in controller.update { $0.showActiveBadge = v } }))
             if controller.settingsWereRecovered {
