@@ -1569,6 +1569,26 @@ var MirageCore = (function(exports) {
 			removed
 		};
 	}
+	/**
+	* What each finding would be sent as right now (same numbering as protect() would give), for
+	* hover tooltips. Warnings (kept) get null. Saves nothing.
+	*/
+	function previewPlaceholders(text, settings, state) {
+		const findings = detect(text, settings);
+		const masks = findings.map((f, i) => ({
+			f,
+			i
+		})).filter(({ f }) => isMaskType(f.type));
+		const { tokens } = assignTokens(state ?? emptyTokenState(), masks.map(({ f }) => ({
+			type: f.type,
+			value: f.value
+		})));
+		return findings.map((f, i) => {
+			if (isSecretType(f.type)) return removedPlaceholder(f.type, f.kind);
+			const m = masks.findIndex((x) => x.i === i);
+			return m >= 0 ? tokens[m] : null;
+		});
+	}
 	/** Puts real values back for known placeholders; secrets were never stored and stay removed. */
 	function restore(text, state) {
 		const values = lookupTokens(state, [...new Set([...text.matchAll(TOKEN_PATTERN)].map((m) => m[0]))]);
@@ -1601,6 +1621,7 @@ var MirageCore = (function(exports) {
 	exports.analyze = analyze;
 	exports.checkReply = checkReply;
 	exports.emptyTokenState = emptyTokenState;
+	exports.previewPlaceholders = previewPlaceholders;
 	exports.protect = protect;
 	exports.redact = redact;
 	exports.restore = restore;

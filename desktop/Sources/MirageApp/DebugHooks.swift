@@ -39,6 +39,7 @@ enum DebugHooks {
                      "gateEvents=\(model.controller.gateEvents)", "lastGateReason=\(model.controller.lastGateReason)",
                      "chatgptEnabled=\(model.controller.settings.appEnabled(.chatgpt))",
                      "decisionOpen=\(model.controller.decision != nil)",
+                     "decisionPanel=\(NSApp.windows.first { $0 is FloatingPanel && $0.isVisible && $0.canBecomeKey && $0.frame.width > 300 }.map { "\(Int($0.frame.minX)),\(Int($0.frame.minY)),\(Int($0.frame.width)),\(Int($0.frame.height))" } ?? "none")",
                      "live=\(model.controller.live.map { "count \($0.count), level \($0.level.rawValue), underlines \($0.marks.count), box \(Int($0.box.minX)),\(Int($0.box.minY)) \(Int($0.box.width))x\(Int($0.box.height)), first underline \($0.marks.first.map { "\(Int($0.rect.minX)),\(Int($0.rect.minY)) \(Int($0.rect.width))x\(Int($0.rect.height))" } ?? "none")" } ?? "none")",
                      "replyAlert=\(model.controller.replyAlert.map { "\($0.analysis.findings.count) finding(s): \($0.analysis.findings.map(\.type))" } ?? "none")",
                      String(format: "gateCheckMs=%.2f backgroundCheckMs=%.0f holdToPanelMs=%.1f", model.controller.lastGateMs, model.controller.lastCheckMs, model.presenter?.holdToPanelMs ?? -1),

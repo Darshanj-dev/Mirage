@@ -19,11 +19,18 @@ final class PanelPresenter {
     private var replyPanel: FloatingPanel?
     private var toastPanel: FloatingPanel?
     private var bag = Set<AnyCancellable>()
+    private var resizeObserver: NSObjectProtocol?
     private(set) var holdToPanelMs: Double = 0
 
     init(controller: ProtectionController) {
         self.controller = controller
         controller.isDecisionPanelKey = { [weak self] in self?.decisionPanel?.isKeyWindow == true }
+        controller.isOnMirageWindow = { axPoint in
+            // AX points are top-left based; AppKit frames bottom-left.
+            let h = NSScreen.screens.first?.frame.height ?? 0
+            let p = NSPoint(x: axPoint.x, y: h - axPoint.y)
+            return NSApp.windows.contains { $0.isVisible && !$0.ignoresMouseEvents && $0.frame.contains(p) }
+        }
         controller.$decision.map { $0 != nil }.removeDuplicates().sink { [weak self] open in self?.showDecision(open) }.store(in: &bag)
         controller.$replyAlert.sink { [weak self] alert in self?.showReply(alert) }.store(in: &bag)
         controller.$toast.sink { [weak self] toast in self?.showToast(toast) }.store(in: &bag)
@@ -52,17 +59,19 @@ final class PanelPresenter {
     /// Right above the AI app's prompt box, centred on it, like the extension's panel; fully on
     /// screen (below the box's top if there is no room above). Falls back to the screen's bottom.
     private func placeAboveBox(_ panel: NSPanel) {
-        guard let box = controller.promptBoxFrame else { place(panel, offset: 160); return }
-        let cocoaBox = ScreenCoords.toCocoa(box)
-        let screen = NSScreen.screens.first { $0.frame.intersects(cocoaBox) } ?? NSScreen.main
-        guard let frame = screen?.visibleFrame else { return }
         let size = panel.frame.size
-        var x = cocoaBox.midX - size.width / 2
-        var y = cocoaBox.maxY + 10
-        if y + size.height > frame.maxY - 8 { y = frame.maxY - size.height - 8 }
-        x = min(max(x, frame.minX + 8), frame.maxX - size.width - 8)
+        let cocoaBox = controller.promptBoxFrame.map(ScreenCoords.toCocoa)
+        let screen = cocoaBox.flatMap { box in NSScreen.screens.first { $0.frame.intersects(box) } }
+            ?? NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
+        guard let frame = screen?.visibleFrame else { return }
+        var x = (cocoaBox?.midX ?? frame.midX) - size.width / 2
+        // Above the box's top edge; if there is no room above, as high as fits.
+        var y = (cocoaBox?.maxY ?? frame.minY + 160) + 10
+        y = min(y, frame.maxY - size.height - 8)
         y = max(y, frame.minY + 8)
-        panel.setFrameOrigin(NSPoint(x: x, y: y))
+        x = min(max(x, frame.minX + 8), frame.maxX - size.width - 8)
+        let origin = NSPoint(x: x, y: y)
+        if panel.frame.origin != origin { panel.setFrameOrigin(origin) }
     }
 
     /// Bottom-centre of the screen the mouse is on, above the Dock, always fully on screen.
@@ -81,8 +90,20 @@ final class PanelPresenter {
             placeAboveBox(panel)
             panel.orderFrontRegardless()
             panel.makeKey()
+            // The panel sizes itself to its content after it appears (and again when Review opens),
+            // growing downwards: re-place it on every size change so it is always fully on screen.
+            if resizeObserver == nil {
+                resizeObserver = NotificationCenter.default.addObserver(forName: NSWindow.didResizeNotification, object: panel, queue: .main) { [weak self, weak panel] _ in
+                    MainActor.assumeIsolated { if let self, let panel { self.placeAboveBox(panel) } }
+                }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self, weak panel] in
+                if let self, let panel { self.placeAboveBox(panel) }
+            }
             holdToPanelMs = (CFAbsoluteTimeGetCurrent() - controller.lastHoldAt) * 1000
         } else {
+            if let o = resizeObserver { NotificationCenter.default.removeObserver(o) }
+            resizeObserver = nil
             decisionPanel?.orderOut(nil)
             decisionPanel = nil
         }

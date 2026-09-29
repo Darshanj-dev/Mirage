@@ -71,7 +71,12 @@ public struct ReplyAlert: Identifiable {
 /// The live state of the prompt box, drawn over the AI app like the extension's badge and underlines.
 public struct LiveMarks: Equatable {
     public enum Kind: Equatable { case personal, secret, warn }
-    public struct Mark: Equatable { public let rect: CGRect; public let kind: Kind }
+    public struct Mark: Equatable {
+        public let rect: CGRect
+        public let kind: Kind
+        public let name: String // the kind of detail, e.g. "PAN" (never the value)
+        public let sentAs: String? // «PAN_1», «AWS_ACCESS_KEY_REMOVED»; nil: kept as typed
+    }
     public let box: CGRect
     public let count: Int
     public let level: RiskLevel
@@ -143,6 +148,9 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
     public var settingsWereRecovered: Bool { settingsStore.recoveredFromDamage }
     /// True while MIRAGE's decision panel has keyboard focus: its keys are for the panel.
     public var isDecisionPanelKey: () -> Bool = { false }
+    /// True if a screen point (top-left origin) is on one of MIRAGE's own windows: those clicks
+    /// are MIRAGE's, never held (the decision panel sits right above the prompt box).
+    public var isOnMirageWindow: (CGPoint) -> Bool = { _ in false }
 
     public init() {
         settings = settingsStore.load()
@@ -258,6 +266,7 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
         case .returnKey:
             break // every plain Return in a protected app is held and checked
         case .click(let p):
+            if isOnMirageWindow(p) { lastGateReason = "clickOnMirage"; return false }
             // Only clicks on (or near) the send button; clicks in the text itself pass untouched.
             let onSend = sendFrame.map { $0.insetBy(dx: -4, dy: -4).contains(p) } ?? false
             let nearBox = inputFrame.map { !$0.contains(p) && $0.insetBy(dx: -160, dy: -160).contains(p) } ?? false
@@ -503,6 +512,7 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
             let send = front.adapter.sendControl(app: front.app, near: input).flatMap(AX.frame)
             let inputBox = AX.frame(input)
             let analysis = try? core.analyze(text, settings: settings.detection, policy: settings.policy)
+            let sentAs = (try? core.previewPlaceholders(text, settings: settings.detection)) ?? []
             // Where each finding is on screen, for the underlines: asked of the box, else of the text
             // runs inside it (browser-based editors answer per run), else estimated from the run's width.
             let runs = AX.findAll(in: input, maxDepth: 12, maxNodes: 600) { AX.role($0) == kAXStaticTextRole }
@@ -511,20 +521,21 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
                     return (el, t, f)
                 }
             var used: [Int: Int] = [:] // run index → search position, so repeated values map in order
-            let marks: [LiveMarks.Mark] = (analysis?.findings ?? []).compactMap { f in
+            let marks: [LiveMarks.Mark] = (analysis?.findings ?? []).enumerated().compactMap { index, f in
                 let kind: LiveMarks.Kind = f.policy == .block ? .secret : f.policy == .warn ? .warn : .personal
-                if let rect = AX.bounds(of: input, start: f.start, length: f.end - f.start) { return LiveMarks.Mark(rect: rect, kind: kind) }
+                let placeholder = index < sentAs.count ? sentAs[index] : nil
+                func mark(_ rect: CGRect) -> LiveMarks.Mark { LiveMarks.Mark(rect: rect, kind: kind, name: f.kind ?? f.type, sentAs: placeholder) }
+                if let rect = AX.bounds(of: input, start: f.start, length: f.end - f.start) { return mark(rect) }
                 for (i, run) in runs.enumerated() {
                     let ns = run.text as NSString
                     let from = used[i] ?? 0
                     let hit = ns.range(of: f.value, range: NSRange(location: from, length: ns.length - from))
                     guard hit.location != NSNotFound else { continue }
                     used[i] = hit.location + hit.length
-                    if let rect = AX.bounds(of: run.el, start: hit.location, length: hit.length) { return LiveMarks.Mark(rect: rect, kind: kind) }
+                    if let rect = AX.bounds(of: run.el, start: hit.location, length: hit.length) { return mark(rect) }
                     let perChar = run.frame.width / CGFloat(max(1, ns.length))
-                    let rect = CGRect(x: run.frame.minX + perChar * CGFloat(hit.location), y: run.frame.minY,
-                                      width: perChar * CGFloat(hit.length), height: run.frame.height)
-                    return LiveMarks.Mark(rect: rect, kind: kind)
+                    return mark(CGRect(x: run.frame.minX + perChar * CGFloat(hit.location), y: run.frame.minY,
+                                       width: perChar * CGFloat(hit.length), height: run.frame.height))
                 }
                 return nil
             }

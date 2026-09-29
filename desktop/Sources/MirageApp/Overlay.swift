@@ -21,6 +21,9 @@ final class OverlayPresenter {
     private let controller: ProtectionController
     private var marksPanel: NSPanel?
     private var badgePanel: NSPanel?
+    private var tipPanel: NSPanel?
+    private var mouseMonitor: Any?
+    private var current: LiveMarks?
     private var bag = Set<AnyCancellable>()
 
     init(controller: ProtectionController) {
@@ -43,7 +46,45 @@ final class OverlayPresenter {
         return p
     }
 
+    /// Hover, like the extension: pointer over an underlined item → what it will be sent as.
+    /// Watches the pointer's position only, only while there are marks on screen.
+    private func watchPointer(_ on: Bool) {
+        if on, mouseMonitor == nil {
+            mouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
+                MainActor.assumeIsolated { self?.pointerMoved() }
+            }
+        } else if !on, let m = mouseMonitor {
+            NSEvent.removeMonitor(m)
+            mouseMonitor = nil
+            tipPanel?.orderOut(nil)
+        }
+    }
+
+    private func pointerMoved() {
+        guard let live = current, controller.decision == nil else { tipPanel?.orderOut(nil); return }
+        let h = NSScreen.screens.first?.frame.height ?? 0
+        let loc = NSEvent.mouseLocation
+        let ax = CGPoint(x: loc.x, y: h - loc.y)
+        guard let mark = live.marks.first(where: { $0.rect.insetBy(dx: -2, dy: -3).contains(ax) }) else { tipPanel?.orderOut(nil); return }
+        let text: String
+        switch mark.kind {
+        case .secret: text = "This looks like \(Names.kinds[mark.name] ?? Names.types[mark.name] ?? "a secret"). It won't be sent: it becomes \(mark.sentAs ?? "«REMOVED»")."
+        case .personal: text = "\(Names.kinds[mark.name] ?? Names.types[mark.name] ?? "Personal detail") · will be sent as \(mark.sentAs ?? "a placeholder")"
+        case .warn: text = "Health detail · kept, the AI needs it to answer"
+        }
+        let view = NSHostingView(rootView: TipView(text: text, kind: mark.kind))
+        let size = view.fittingSize
+        let origin = ScreenCoords.toCocoa(CGRect(x: mark.rect.minX, y: mark.rect.minY - size.height - 6, width: size.width, height: size.height)).origin
+        let tip = tipPanel ?? panel(CGRect(origin: origin, size: size), clickThrough: true)
+        tipPanel = tip
+        tip.contentView = view
+        tip.setFrame(CGRect(origin: origin, size: size), display: true)
+        tip.orderFrontRegardless()
+    }
+
     private func show(_ live: LiveMarks?) {
+        current = live
+        watchPointer(!(live?.marks.isEmpty ?? true))
         guard let live else {
             marksPanel?.orderOut(nil)
             badgePanel?.orderOut(nil)
@@ -66,6 +107,20 @@ final class OverlayPresenter {
         badge.setFrame(ScreenCoords.toCocoa(badgeRect), display: true)
         badge.contentView = NSHostingView(rootView: BadgeView(live: live))
         if controller.decision == nil { badge.orderFrontRegardless() }
+    }
+}
+
+private struct TipView: View {
+    let text: String
+    let kind: LiveMarks.Kind
+    var body: some View {
+        Text(text)
+            .font(.callout)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 10).padding(.vertical, 7)
+            .background(Color(white: 0.1).opacity(0.95), in: RoundedRectangle(cornerRadius: 8))
+            .overlay(alignment: .leading) { Rectangle().fill(kind == .secret ? Color.red : kind == .warn ? .orange : .blue).frame(width: 3) }
+            .fixedSize()
     }
 }
 

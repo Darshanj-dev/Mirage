@@ -39,7 +39,7 @@ public enum EndToEnd {
     static let replyPrompt = "Invent one example AWS access key ID for a tutorial: the letters AKIA followed by 16 random uppercase letters and digits. Reply with only that ID."
 
     public static func run(bundleID: String, action: String) -> [String] {
-        prompt = action.hasPrefix("long") ? longPrompt : shortPrompt
+        prompt = action.hasPrefix("long") || action.hasPrefix("real") ? longPrompt : shortPrompt
         if action == "compose" { return compose(bundleID: bundleID) }
         if action == "live" { return liveMarks(bundleID: bundleID) }
         guard let adapter = AdapterRegistry.adapter(forBundle: bundleID),
@@ -126,9 +126,34 @@ public enum EndToEnd {
         let held = normalizedPromptText(adapter.readInput(input) ?? "") == normalizedPromptText(prompt)
         out.append("prompt still in the box, unsent: \(held)")
 
-        // 3. The user's choice (the same call the panel's button makes).
-        let choice = action.hasSuffix("cancel") ? "cancel" : "protect"
-        DistributedNotificationCenter.default().postNotificationName(.init("dev.mirage.debug.decide"), object: choice, userInfo: nil, deliverImmediately: true)
+        // 3. The user's choice. "real-*": a real mouse click on the panel's Protect & Send button,
+        // found from the panel's frame (bottom-right button), exactly as a user clicks it.
+        if action.hasPrefix("real") {
+            for _ in 0..<30 where !statusText.contains("decisionPanel=") || statusText.contains("decisionPanel=none") {
+                Thread.sleep(forTimeInterval: 0.1)
+                try? FileManager.default.removeItem(at: status)
+                DistributedNotificationCenter.default().postNotificationName(.init("dev.mirage.debug.capture"), object: nil, userInfo: nil, deliverImmediately: true)
+                Thread.sleep(forTimeInterval: 0.1)
+                statusText = (try? String(contentsOf: status, encoding: .utf8)) ?? ""
+            }
+            out.append(statusText.split(separator: "\n").first { $0.hasPrefix("decisionPanel=") }.map(String.init) ?? "decisionPanel=?")
+            guard let frameLine = statusText.split(separator: "\n").first(where: { $0.hasPrefix("decisionPanel=") }),
+                  case let parts = frameLine.dropFirst("decisionPanel=".count).split(separator: ",").compactMap({ Double($0) }), parts.count == 4 else {
+                return out + ["FAIL decision panel frame unknown"]
+            }
+            let h = NSScreen.screens.first?.frame.height ?? 0
+            let p = CGPoint(x: parts[0] + parts[2] - 18 - 55, y: h - (parts[1] + 18 + 12)) // Protect & Send, bottom right
+            out.append("clicking Protect & Send at \(Int(p.x)),\(Int(p.y)) with the mouse")
+            let src = CGEventSource(stateID: .hidSystemState)
+            CGEvent(mouseEventSource: src, mouseType: .mouseMoved, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap)
+            usleep(200_000)
+            CGEvent(mouseEventSource: src, mouseType: .leftMouseDown, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap)
+            usleep(80_000)
+            CGEvent(mouseEventSource: src, mouseType: .leftMouseUp, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap)
+        } else {
+            let choice = action.hasSuffix("cancel") ? "cancel" : "protect"
+            DistributedNotificationCenter.default().postNotificationName(.init("dev.mirage.debug.decide"), object: choice, userInfo: nil, deliverImmediately: true)
+        }
         if !action.hasSuffix("cancel") {
             // Trace the send: what the box holds every 500 ms (lengths and flags only).
             for i in 0..<12 {

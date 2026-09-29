@@ -85,6 +85,21 @@ export function protect(text: string, settings: DetectSettings, state?: TokenSta
   return { text: replaceSpans(text, replacements), state: next, hidden: hide.length, removed };
 }
 
+/**
+ * What each finding would be sent as right now (same numbering as protect() would give), for
+ * hover tooltips. Warnings (kept) get null. Saves nothing.
+ */
+export function previewPlaceholders(text: string, settings: DetectSettings, state?: TokenState | null): (string | null)[] {
+  const findings = detect(text, settings);
+  const masks = findings.map((f, i) => ({ f, i })).filter(({ f }) => isMaskType(f.type));
+  const { tokens } = assignTokens(state ?? emptyTokenState(), masks.map(({ f }) => ({ type: f.type as MaskType, value: f.value })));
+  return findings.map((f, i) => {
+    if (isSecretType(f.type)) return removedPlaceholder(f.type, f.kind);
+    const m = masks.findIndex((x) => x.i === i);
+    return m >= 0 ? tokens[m]! : null;
+  });
+}
+
 /** Puts real values back for known placeholders; secrets were never stored and stay removed. */
 export function restore(text: string, state: TokenState): { text: string; restored: number } {
   const values = lookupTokens(state, [...new Set([...text.matchAll(TOKEN_PATTERN)].map((m) => m[0]))]);

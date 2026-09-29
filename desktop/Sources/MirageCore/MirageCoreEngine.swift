@@ -87,6 +87,12 @@ public final class MirageCoreEngine: @unchecked Sendable {
         return Protection(text: raw.text, hidden: raw.hidden, removed: raw.removed)
     }
 
+    /// What each finding of `analyze(text)` would be sent as (nil for kept health details).
+    public func previewPlaceholders(_ text: String, settings: DetectionSettings = .init()) throws -> [String?] {
+        let state: Any = tokenStateObject() ?? NSNull()
+        return try JSONDecoder().decode([String?].self, from: call("previewPlaceholders", [text, settings.jsonObject, state]))
+    }
+
     public func checkReply(_ text: String, settings: DetectionSettings = .init()) throws -> Analysis {
         try JSONDecoder().decode(Analysis.self, from: call("checkReply", [text, settings.jsonObject, [String]()]))
     }
