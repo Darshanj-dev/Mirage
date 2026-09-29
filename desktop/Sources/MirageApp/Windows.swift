@@ -167,6 +167,8 @@ private struct GeneralPane: View {
             Toggle("Start MIRAGE at login", isOn: Binding(get: { controller.settings.startAtLogin }, set: setLogin))
             if let loginError { Text(loginError).font(.caption).foregroundStyle(.orange) }
             Toggle("Check AI replies for secrets and ID numbers", isOn: bind(\.checkReplies))
+            Toggle("Show “MIRAGE active” on the message box in ChatGPT and Claude", isOn: Binding(
+                get: { controller.settings.activeBadge }, set: { v in controller.update { $0.showActiveBadge = v } }))
             if controller.settingsWereRecovered {
                 Label("Your settings file was damaged and has been reset to defaults.", systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
             }

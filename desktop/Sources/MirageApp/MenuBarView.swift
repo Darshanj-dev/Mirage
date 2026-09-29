@@ -58,6 +58,11 @@ struct MenuBarView: View {
                 }
             }
 
+            Toggle(isOn: Binding(get: { controller.settings.activeBadge }, set: { v in controller.update { $0.showActiveBadge = v } })) {
+                Text("Show “MIRAGE active” in ChatGPT and Claude").font(.callout)
+            }
+            .toggleStyle(.switch).controlSize(.small)
+
             VStack(spacing: 4) {
                 StatusRow(title: "Local detection", value: controller.coreStatus == "Running" ? "On" : controller.coreStatus, color: controller.coreStatus == "Running" ? .green : .red)
                 StatusRow(title: "Network", value: "Not used", color: .green)

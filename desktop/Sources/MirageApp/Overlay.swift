@@ -29,6 +29,9 @@ final class OverlayPresenter {
     init(controller: ProtectionController) {
         self.controller = controller
         controller.$live.removeDuplicates().sink { [weak self] live in self?.show(live) }.store(in: &bag)
+        controller.$settings.map(\.activeBadge).removeDuplicates().sink { [weak self] _ in
+            DispatchQueue.main.async { self?.show(controller.live) }
+        }.store(in: &bag)
         controller.$decision.map { $0 != nil }.removeDuplicates().sink { [weak self] open in
             if open { self?.badgePanel?.orderOut(nil) } else { self?.show(controller.live) }
         }.store(in: &bag)
@@ -100,7 +103,8 @@ final class OverlayPresenter {
         marks.orderOut(nil) // no lines are drawn (by request); the marks only drive the hover tips
 
         // Badge: just above the top-right corner of the box, where the extension puts its shield.
-        let size = CGSize(width: live.count > 0 ? 178 : 34, height: 30)
+        guard controller.settings.activeBadge else { badgePanel?.orderOut(nil); return }
+        let size = CGSize(width: live.count > 0 ? 190 : 132, height: 30)
         let badgeRect = CGRect(x: live.box.maxX - size.width, y: live.box.minY - size.height - 6, width: size.width, height: size.height)
         let badge = badgePanel ?? panel(ScreenCoords.toCocoa(badgeRect), clickThrough: false)
         badgePanel = badge
@@ -159,12 +163,10 @@ private struct BadgeView: View {
         HStack(spacing: 6) {
             Image(systemName: live.hasSecret ? "exclamationmark.shield.fill" : live.count > 0 ? "shield.lefthalf.filled" : "shield")
                 .foregroundStyle(live.count == 0 ? Color.green : live.level.color)
-            if live.count > 0 {
-                Text(live.hasSecret ? "Secret · won't be sent" : "\(live.count) item\(live.count == 1 ? "" : "s") will be hidden")
-                    .font(.caption.weight(.semibold)).lineLimit(1)
-            }
+            Text(live.count == 0 ? "MIRAGE active" : live.hasSecret ? "Secret · won't be sent" : "\(live.count) item\(live.count == 1 ? "" : "s") will be hidden")
+                .font(.caption.weight(.semibold)).lineLimit(1)
         }
-        .padding(.horizontal, live.count > 0 ? 10 : 7).padding(.vertical, 5)
+        .padding(.horizontal, 10).padding(.vertical, 5)
         .background(.regularMaterial, in: Capsule())
         .overlay(Capsule().stroke(live.count == 0 ? Color.green.opacity(0.4) : live.level.color.opacity(0.5)))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)

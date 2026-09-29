@@ -14,6 +14,10 @@ public struct DesktopSettings: Codable, Equatable {
     public var apps: [AppID: Bool] = [.chatgpt: true, .claude: true, .gemini: false, .copilot: false, .perplexity: false]
     public var detection = DetectionSettings(categories: Dictionary(uniqueKeysWithValues: Category.allCases.map { ($0, true) }))
     public var policy = PolicySettings()
+    /// The "MIRAGE active" badge on the AI app's prompt box. Optional so older settings files
+    /// (without the key) still load; nil means on.
+    public var showActiveBadge: Bool?
+    public var activeBadge: Bool { showActiveBadge ?? true }
     public init() {}
 
     public func appEnabled(_ id: AppID) -> Bool { apps[id] ?? false }
