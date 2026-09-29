@@ -6,15 +6,16 @@ import { sendMessage } from '@/lib/messages';
 import type { SendGuard } from '@/lib/page/sendGuard';
 import type { RestoredSpan } from '@/lib/page/restore';
 import type { SiteConfig } from '@/lib/sites';
-import { obscure, secretName, t, tCount, typeName } from '@/lib/strings';
-import { BlockPanel } from './BlockPanel';
+import { findingLabel, findingName, levelName, obscure, t, tCount } from '@/lib/strings';
 import { ConfirmRawPanel, ErrorPanel } from './NoticePanels';
-import { PreviewPanel } from './PreviewPanel';
+import { ReplyAlert } from './ReplyAlert';
+import { ReviewPanel } from './ReviewPanel';
 import { ShieldBadge } from './ShieldBadge';
 import { Tooltip } from './Tooltip';
 import type { HoverTarget } from './useRangeHover';
 import { usePromptWatcher, type BadgeStatus } from './usePromptWatcher';
 import { useCopyButtons } from './useCopyButtons';
+import { useReplyCheck } from './useReplyCheck';
 import { useRestorer } from './useRestorer';
 import { useSendFlow } from './useSendFlow';
 
@@ -22,10 +23,12 @@ const BADGE_SIZE = 30;
 const QUICK_OFFER_AFTER = 5; // protected sends before Quick mode is offered once
 const HOVER_GRACE_MS = 350; // time to move the mouse from an underline onto its tooltip
 
-function badgeText(status: BadgeStatus, count: number): string {
+function badgeText(status: BadgeStatus, count: number, siteName: string): string {
   switch (status) {
     case 'off':
       return t('badge_off');
+    case 'siteOff':
+      return t('badge_siteOff', [siteName]);
     case 'watching':
       return t('badge_watching');
     case 'found':
@@ -41,14 +44,14 @@ function badgeText(status: BadgeStatus, count: number): string {
 
 /** One line per finding. Real values are never shown in full outside the prompt box. */
 function findingLine(finding: Finding, token: string | null): string {
-  const type = finding.type;
-  if (isSecretType(type)) return `${typeName(type)}: ${obscure(finding.value)}`;
-  return `${typeName(type)} → ${token ?? '…'}`;
+  if (isSecretType(finding.type)) return `${findingLabel(finding)}: ${obscure(finding.value)}`;
+  if (finding.policy === 'warn') return `${findingLabel(finding)}: ${t('review_warnHealth')}`;
+  return `${findingLabel(finding)} → ${token ?? '…'}`;
 }
 
 function hoverText(finding: Finding, token: string | null): string {
-  const type = finding.type;
-  if (isSecretType(type)) return t('block_title', [secretName(type)]);
+  if (isSecretType(finding.type)) return t('block_title', [findingName(finding)]);
+  if (finding.policy === 'warn') return t('badge_warn');
   return t('highlight_hover', [token ?? '…']);
 }
 
@@ -63,8 +66,9 @@ export function MirageApp({ site, guard }: { site: SiteConfig; guard: SendGuard 
   const watcher = usePromptWatcher(site);
   const { status, scan, anchor, hover } = watcher;
   const flow = useSendFlow(site, guard, watcher.settingsRef, watcher.loadSettings);
-  const restorer = useRestorer(site);
+  const restorer = useRestorer(site, watcher.settings?.revealMode ?? 'inline');
   useCopyButtons(site, restorer.spans);
+  const replies = useReplyCheck(site, watcher.settingsRef, restorer.values);
   const [badgeHover, setBadgeHover] = useState(false);
   const settings = watcher.settings;
 
@@ -96,7 +100,7 @@ export function MirageApp({ site, guard }: { site: SiteConfig; guard: SendGuard 
   // Offer Quick mode once, on the first preview after 5 protected sends.
   const offerShownNow = useRef(false);
   const showQuickOffer =
-    flow.panel?.kind === 'preview' &&
+    flow.panel?.kind === 'review' &&
     !!settings &&
     !settings.quickMode &&
     (!settings.quickModeOffered || offerShownNow.current) &&
@@ -106,7 +110,7 @@ export function MirageApp({ site, guard }: { site: SiteConfig; guard: SendGuard 
       offerShownNow.current = true;
       void sendMessage({ type: 'SET_SETTINGS', settings: { quickModeOffered: true } });
     }
-    if (flow.panel?.kind !== 'preview') offerShownNow.current = false;
+    if (flow.panel?.kind !== 'review') offerShownNow.current = false;
   }, [showQuickOffer, flow.panel?.kind]);
 
   // Just above the top-right corner of the composer, so it never covers the site's own buttons.
@@ -114,7 +118,11 @@ export function MirageApp({ site, guard }: { site: SiteConfig; guard: SendGuard 
   const badgeLeft = anchor ? anchor.right - BADGE_SIZE - 8 : window.innerWidth - BADGE_SIZE - 16;
   const badgeRect = { top: badgeTop, left: badgeLeft, width: BADGE_SIZE, bottom: badgeTop + BADGE_SIZE };
 
-  const count = scan.findings.length;
+  const count = scan.findings.filter((f) => f.policy !== 'warn').length;
+  const level = scan.risk.level;
+  const label = badgeText(status, count, site.name);
+  const badgeLabel =
+    (status === 'found' || status === 'secret') ? `${label} ${levelName(level)} · ${scan.risk.score}.` : watcher.limited && status === 'watching' ? `${label} ${t('badge_limited')}` : label;
   const hovered = pinned ? scan.findings[pinned.index] : undefined;
   const restored = restorer.hover ? restorer.spans[restorer.hover.index] : undefined;
   const panel = flow.panel;
@@ -124,8 +132,10 @@ export function MirageApp({ site, guard }: { site: SiteConfig; guard: SendGuard 
       {!panel && (
         <ShieldBadge
           status={status}
+          level={level}
+          limited={watcher.limited}
           count={count}
-          label={badgeText(status, count)}
+          label={badgeLabel}
           style={{ top: badgeRect.top, left: badgeRect.left }}
           pulse={pulse}
           onClick={() => {
@@ -137,11 +147,11 @@ export function MirageApp({ site, guard }: { site: SiteConfig; guard: SendGuard 
 
       {!panel && (badgeHover || status === 'pageChanged') && (
         <Tooltip rect={badgeRect} align="end">
-          <p className="mirage-tooltip__title">{badgeText(status, count)}</p>
-          {badgeHover && count > 0 && (
+          <p className="mirage-tooltip__title">{badgeLabel}</p>
+          {badgeHover && scan.findings.length > 0 && (
             <ul className="mirage-tooltip__list">
               {scan.findings.map((f, i) => (
-                <li key={`${f.start}-${f.end}`} className={isSecretType(f.type) ? 'is-secret' : 'is-mask'}>
+                <li key={`${f.start}-${f.end}`} className={isSecretType(f.type) ? 'is-secret' : f.policy === 'warn' ? 'is-warn' : 'is-mask'}>
                   {findingLine(f, scan.tokens[i] ?? null)}
                 </li>
               ))}
@@ -159,7 +169,7 @@ export function MirageApp({ site, guard }: { site: SiteConfig; guard: SendGuard 
           }}
         >
           <span>{hoverText(hovered, scan.tokens[pinned.index] ?? null)}</span>
-          {!isSecretType(hovered.type) && (
+          {hovered.policy === 'mask' && (
             <button
               type="button"
               className="mirage-tooltip__action"
@@ -177,34 +187,39 @@ export function MirageApp({ site, guard }: { site: SiteConfig; guard: SendGuard 
 
       {restorer.hover && restored && <Tooltip rect={restorer.hover.rect}>{restoreText(restored, site.name)}</Tooltip>}
 
-      {panel?.kind === 'preview' && (
-        <PreviewPanel
+      {panel?.kind === 'review' && (
+        <ReviewPanel
           siteName={site.name}
           anchor={anchor}
-          masked={panel.masked}
-          hidden={panel.hidden}
-          replacements={panel.replacements}
+          review={panel}
+          blockSecrets={settings?.blockSecrets !== false}
           showQuickOffer={showQuickOffer}
           onQuickModeOn={() => void sendMessage({ type: 'SET_SETTINGS', settings: { quickMode: true, quickModeOffered: true } })}
-          onSend={flow.sendProtected}
-          onCancel={flow.close}
-          onSendRaw={flow.askSendRaw}
-        />
-      )}
-      {panel?.kind === 'block' && (
-        <BlockPanel
-          anchor={anchor}
-          text={panel.text}
-          findings={panel.findings}
-          onRemoveAndSend={flow.removeSecrets}
+          onProtect={flow.protect}
+          onToggle={flow.toggleKeep}
           onEdit={flow.close}
+          onSendAnyway={flow.askSendRaw}
         />
       )}
-      {panel?.kind === 'error' && (
-        <ErrorPanel anchor={anchor} onRetry={flow.retry} onSendRaw={flow.askSendRaw} onClose={flow.close} />
+      {panel?.kind === 'error' && <ErrorPanel anchor={anchor} onRetry={flow.retry} onClose={flow.close} />}
+      {(panel?.kind === 'confirmRaw' || panel?.kind === 'confirmSecret') && (
+        <ConfirmRawPanel
+          anchor={anchor}
+          siteName={site.name}
+          secret={panel.kind === 'confirmSecret'}
+          onConfirm={flow.confirmSendRaw}
+          onBack={flow.back}
+        />
       )}
-      {panel?.kind === 'confirmRaw' && (
-        <ConfirmRawPanel anchor={anchor} siteName={site.name} onConfirm={flow.confirmSendRaw} onBack={flow.back} />
+
+      {!panel && replies.current && (
+        <ReplyAlert
+          alert={replies.current}
+          bottom={anchor ? window.innerHeight - anchor.top + 12 : 96}
+          right={anchor ? Math.max(8, window.innerWidth - anchor.right) : 16}
+          onShow={() => replies.show(replies.current!)}
+          onDismiss={() => replies.dismiss(replies.current!)}
+        />
       )}
 
       {flow.chip !== null && anchor && (

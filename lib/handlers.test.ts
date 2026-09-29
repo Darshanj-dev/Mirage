@@ -6,7 +6,7 @@ describe('service worker messages', () => {
   it('rejects unknown or malformed messages', async () => {
     expect(await handleMessage(null)).toEqual({ ok: false, error: 'Unknown message' });
     expect(await handleMessage({ type: 'DROP_TABLES' })).toMatchObject({ ok: false });
-    expect(await handleMessage({ type: 'TOKENIZE', site: 'claude', chatId: 'x', findings: [] })).toMatchObject({
+    expect(await handleMessage({ type: 'TOKENIZE', site: 'bard', chatId: 'x', findings: [] })).toMatchObject({
       ok: false,
     });
   });
@@ -120,5 +120,29 @@ describe('service worker messages', () => {
       ],
     });
     expect(await handleMessage({ type: 'CLEAR_VAULT' })).toEqual({ ok: true, cleared: 2 });
+  });
+
+  describe('messages from a chatbot page', () => {
+    const page = { kind: 'page', site: 'chatgpt' } as const;
+
+    it('may use its own site’s saved details, not another site’s', async () => {
+      const mine = await handleMessage({ type: 'TOKENIZE', site: 'chatgpt', chatId: 'c1', findings: [{ type: 'PAN', value: 'ABCDE1234F' }] }, Date.now(), page);
+      expect(mine).toMatchObject({ ok: true });
+      const theirs = await handleMessage({ type: 'RESTORE', site: 'gemini', chatId: 'c1', tokens: ['«PAN_1»'] }, Date.now(), page);
+      expect(theirs).toMatchObject({ ok: false });
+    });
+
+    it('can turn protection on but never off, and cannot clear or read the vault list', async () => {
+      expect(await handleMessage({ type: 'SET_SETTINGS', settings: { enabled: true } }, Date.now(), page)).toMatchObject({ ok: true });
+      expect(await handleMessage({ type: 'SET_SETTINGS', settings: { enabled: false } }, Date.now(), page)).toMatchObject({ ok: false });
+      expect(await handleMessage({ type: 'SET_SETTINGS', settings: { blockSecrets: false } }, Date.now(), page)).toMatchObject({ ok: false });
+      expect(await handleMessage({ type: 'SET_SETTINGS', alwaysMask: [] }, Date.now(), page)).toMatchObject({ ok: false });
+      expect(await handleMessage({ type: 'CLEAR_VAULT' }, Date.now(), page)).toMatchObject({ ok: false });
+    });
+
+    it('lets MIRAGE’s own pages do everything', async () => {
+      expect(await handleMessage({ type: 'SET_SETTINGS', settings: { enabled: false } }, Date.now(), { kind: 'extension' })).toMatchObject({ ok: true });
+      expect(await handleMessage({ type: 'CLEAR_VAULT' }, Date.now(), { kind: 'extension' })).toMatchObject({ ok: true });
+    });
   });
 });

@@ -10,6 +10,7 @@ describe('detect', () => {
     const text = "I'm Priya Nair, PAN ABCDE1234F, phone 98450 12345. Write a leave mail to my HOD.";
     const findings = detect(text);
     expect(findings.map((f) => [f.type, f.value, f.policy])).toEqual([
+      ['NAME', 'Priya Nair', 'mask'],
       ['PAN', 'ABCDE1234F', 'mask'],
       ['PHONE', '98450 12345', 'mask'],
     ]);

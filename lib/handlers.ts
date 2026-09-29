@@ -1,20 +1,21 @@
 // Message handlers. Runs in the service worker only (entrypoints/background.ts), which is
 // the one part of MIRAGE allowed to touch the vault.
 
-import { isRequest, type Request, type Response, type ResultMap, type SettingsPatch } from './messages';
+import { isAllowedFrom, isRequest, type Request, type Response, type ResultMap, type Sender, type SettingsPatch } from './messages';
 import { loadMeta, loadSettings, loadStats, recordCounts, saveMeta, saveSettings, type Counts } from './settings';
+import { MASK_TYPES } from './detector/types';
 import { clearVault, loadAlwaysMask, previewTokens, renameChat, restore, saveAlwaysMask, tokenize } from './vault';
 
 type AnyResponse = Response<Request['type']>;
 
 const ok = <T extends Request['type']>(result: ResultMap[T]): Response<T> => ({ ok: true, ...result });
 
-const COUNT_TYPES: readonly string[] = ['AADHAAR', 'PAN', 'PHONE', 'EMAIL', 'UPI', 'IFSC', 'NAME', 'CUSTOM', 'SECRET'];
+const COUNT_TYPES: readonly string[] = [...MASK_TYPES, 'SECRET'];
 
 /** Keeps only numeric count fields for known types, so a COUNT message can never smuggle content into storage. */
 function sanitizeDelta(delta: Partial<Counts>): Partial<Counts> {
   const out: Partial<Counts> = {};
-  for (const key of ['hidden', 'blocked', 'restoreFailures', 'allowOnce'] as const) {
+  for (const key of ['checked', 'protectedSends', 'hidden', 'blocked', 'restoreFailures', 'allowOnce', 'replyWarnings'] as const) {
     const v = delta[key];
     if (typeof v === 'number' && Number.isFinite(v) && v >= 0) out[key] = Math.floor(v);
   }
@@ -38,6 +39,10 @@ const ALLOWED_SETTING_KEYS = [
   'safeWords',
   'awsNameCheck',
   'sites',
+  'blockSecrets',
+  'categories',
+  'revealMode',
+  'checkReplies',
 ] as const;
 
 function pickSettings(patch: SettingsPatch): SettingsPatch {
@@ -46,8 +51,13 @@ function pickSettings(patch: SettingsPatch): SettingsPatch {
   return out as SettingsPatch;
 }
 
-export async function handleMessage(msg: unknown, now: number = Date.now()): Promise<AnyResponse> {
+export async function handleMessage(
+  msg: unknown,
+  now: number = Date.now(),
+  sender: Sender = { kind: 'extension' },
+): Promise<AnyResponse> {
   if (!isRequest(msg)) return { ok: false, error: 'Unknown message' };
+  if (!isAllowedFrom(sender, msg)) return { ok: false, error: `${msg.type} is not allowed from this page` };
   try {
     switch (msg.type) {
       case 'TOKENIZE':

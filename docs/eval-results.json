@@ -1,0 +1,71 @@
+{
+  "date": "2026-09-29",
+  "groups": [
+    {
+      "group": "pii",
+      "cases": 50,
+      "items": 119,
+      "recall": 0.992,
+      "precision": 1,
+      "f1": 0.996,
+      "falsePositives": 0
+    },
+    {
+      "group": "secret",
+      "cases": 50,
+      "items": 51,
+      "recall": 1,
+      "precision": 1,
+      "f1": 1,
+      "falsePositives": 0
+    },
+    {
+      "group": "clean",
+      "cases": 28,
+      "items": 0,
+      "recall": 1,
+      "precision": 1,
+      "f1": 1,
+      "falsePositives": 0
+    },
+    {
+      "group": "adversarial",
+      "cases": 26,
+      "items": 30,
+      "recall": 1,
+      "precision": 1,
+      "f1": 1,
+      "falsePositives": 0
+    },
+    {
+      "group": "obfuscated",
+      "cases": 27,
+      "items": 27,
+      "recall": 1,
+      "precision": 1,
+      "f1": 1,
+      "falsePositives": 0
+    }
+  ],
+  "overall": {
+    "cases": 181,
+    "expected": 227,
+    "found": 226,
+    "falsePositives": 0,
+    "precision": 1,
+    "recall": 0.996,
+    "f1": 0.998,
+    "misses": [
+      "pii-16: mask \"Arjun Menon\""
+    ],
+    "extras": []
+  },
+  "falsePositiveRate": 0,
+  "cleanFlagged": [],
+  "latency": {
+    "meanMs": 0.05,
+    "p95Ms": 0.06,
+    "prompt2kMs": 1.8,
+    "prompt20kMs": 8.06
+  }
+}

@@ -1,104 +1,814 @@
 {
-  "extName": { "message": "MIRAGE" },
-  "extDescription": { "message": "Hides your personal details and blocks secrets before you send a prompt to ChatGPT or Gemini. Real details stay on your device." },
-
-  "badge_off": { "message": "MIRAGE is paused. Click to turn on." },
-  "badge_watching": { "message": "MIRAGE is watching this prompt." },
-  "badge_found": { "message": "$N$ items will be hidden before sending.", "placeholders": { "n": { "content": "$1" } } },
-  "badge_found_one": { "message": "1 item will be hidden before sending." },
-  "badge_secret": { "message": "This prompt has a secret. It won't be sent." },
-  "badge_error": { "message": "MIRAGE couldn't check this prompt." },
-
-  "highlight_hover": { "message": "Will be sent as $PLACEHOLDER$", "placeholders": { "placeholder": { "content": "$1" } } },
-  "highlight_notPersonal": { "message": "Not personal" },
-
-  "preview_title": { "message": "$SITE$ will see this", "placeholders": { "site": { "content": "$1" } } },
-  "preview_footer": { "message": "$N$ items hidden · real details stay on this device", "placeholders": { "n": { "content": "$1" } } },
-  "preview_footer_one": { "message": "1 item hidden · real details stay on this device" },
-  "preview_send": { "message": "Send protected" },
-  "preview_cancel": { "message": "Cancel" },
-  "preview_allowOnce": { "message": "Send without hiding" },
-  "preview_confirmRaw": { "message": "Send without hiding? $SITE$ will see your real details.", "placeholders": { "site": { "content": "$1" } } },
-  "preview_quickOffer": { "message": "Skip this preview next time? Turn on Quick mode." },
-  "quick_chip": { "message": "$N$ items hidden", "placeholders": { "n": { "content": "$1" } } },
-  "quick_chip_one": { "message": "1 item hidden" },
-
-  "block_title": { "message": "This looks like $TYPE$. It won't be sent.", "placeholders": { "type": { "content": "$1" } } },
-  "block_body": { "message": "Secrets like this can give others access to your accounts." },
-  "block_fix": { "message": "Remove secret and send" },
-  "block_edit": { "message": "Edit prompt" },
-
-  "restore_hover": { "message": "Put back on your device. $SITE$ saw $PLACEHOLDER$.", "placeholders": { "site": { "content": "$1" }, "placeholder": { "content": "$2" } } },
-  "restore_failed": { "message": "$SITE$ changed this placeholder, so MIRAGE couldn't put the detail back.", "placeholders": { "site": { "content": "$1" } } },
-  "restore_view": { "message": "$SITE$ saw $PLACEHOLDER$. Your detail: $VALUE$", "placeholders": { "site": { "content": "$1" }, "placeholder": { "content": "$2" }, "value": { "content": "$3" } } },
-  "restore_expired": { "message": "Details cleared after 24 hours." },
-  "restore_copy": { "message": "Copy with details" },
-  "restore_copied": { "message": "Copied with details" },
-  "restore_copyFailed": { "message": "Couldn't copy. Try again." },
-
-  "error_check": { "message": "MIRAGE couldn't check this prompt." },
-  "error_retry": { "message": "Try again" },
-  "error_pageChanged": { "message": "MIRAGE can't protect this page right now. Your prompts are not being checked." },
-
-  "popup_status": { "message": "Protecting $SITE$", "placeholders": { "site": { "content": "$1" } } },
-  "popup_unsupported": { "message": "Not supported on this site yet" },
-  "popup_week": { "message": "$HIDDEN$ details hidden · $BLOCKED$ secrets stopped this week", "placeholders": { "hidden": { "content": "$1" }, "blocked": { "content": "$2" } } },
-  "popup_clear": { "message": "Clear saved details" },
-  "popup_clearConfirm": { "message": "Clear all saved details? Older replies will show placeholders." },
-  "popup_footer": { "message": "Everything stays on this device." },
-
-  "welcome_headline": { "message": "MIRAGE hides your personal details from AI chatbots." },
-  "welcome_done": { "message": "You're protected on ChatGPT and Gemini." },
-
-  "prompt_note": { "message": "(Keep the «» placeholders exactly as written.)" },
-
-  "popup_paused": { "message": "MIRAGE is paused" },
-  "popup_turnOn": { "message": "Turn MIRAGE on" },
-  "popup_turnOff": { "message": "Turn MIRAGE off" },
-  "popup_quickMode": { "message": "Quick mode" },
-  "popup_quickModeHint": { "message": "Skip the preview and send right away." },
-  "popup_safeWords": { "message": "Safe words" },
-  "popup_safeWordsHint": { "message": "Never hidden, even if they look personal." },
-  "popup_alwaysHide": { "message": "Always hide" },
-  "popup_alwaysHideHint": { "message": "Names or words to hide every time." },
-  "popup_addPlaceholder": { "message": "Add a word" },
-  "popup_add": { "message": "Add" },
-  "popup_remove": { "message": "Remove $WORD$", "placeholders": { "word": { "content": "$1" } } },
-  "popup_clearYes": { "message": "Clear" },
-  "popup_cleared": { "message": "$N$ saved details cleared.", "placeholders": { "n": { "content": "$1" } } },
-  "popup_cleared_one": { "message": "1 saved detail cleared." },
-  "popup_repo": { "message": "Source code" },
-
-  "preview_quickOfferQuestion": { "message": "Skip this preview next time?" },
-  "preview_quickOfferAction": { "message": "Turn on Quick mode" },
-  "menu_alwaysHide": { "message": "Always hide \"%s\"" },
-
-  "welcome_title": { "message": "Welcome to MIRAGE" },
-  "welcome_youType": { "message": "You type" },
-  "welcome_aiReceives": { "message": "The AI receives" },
-  "welcome_youSee": { "message": "You see" },
-  "welcome_samplePrompt": { "message": "I'm Priya Nair, PAN ABCDE1234F. Write a leave mail to my HOD." },
-  "welcome_sampleName": { "message": "Priya Nair" },
-  "welcome_sampleReply": { "message": "Dear HOD, I am «PERSON_1» (PAN «PAN_1») and I request leave on Monday. Regards, «PERSON_1»" },
-  "welcome_seeAi": { "message": "See what the AI receives" },
-  "welcome_seeReply": { "message": "See the reply" },
-  "welcome_pin": { "message": "Pin MIRAGE to your toolbar, so you can see it's on." },
-  "welcome_openChatGPT": { "message": "Open ChatGPT" },
-  "welcome_openGemini": { "message": "Open Gemini" },
-  "welcome_fictional": { "message": "All details shown are fictional." },
-  "welcome_startAgain": { "message": "Start again" },
-
-  "secret_API_KEY": { "message": "an API key" },
-  "secret_PASSWORD": { "message": "a password" },
-  "secret_CARD": { "message": "a card number" },
-  "secret_OTP": { "message": "a one-time code" },
-
-  "type_AADHAAR": { "message": "Aadhaar number" },
-  "type_PAN": { "message": "PAN" },
-  "type_PHONE": { "message": "Phone number" },
-  "type_EMAIL": { "message": "Email" },
-  "type_UPI": { "message": "UPI ID" },
-  "type_IFSC": { "message": "IFSC code" },
-  "type_NAME": { "message": "Name" },
-  "type_CUSTOM": { "message": "Always hidden" }
+  "extName": {
+    "message": "MIRAGE"
+  },
+  "extDescription": {
+    "message": "Hides your personal details and blocks secrets before you send a prompt to ChatGPT, Gemini, Claude, Copilot or Perplexity. Real details stay on your device."
+  },
+  "badge_off": {
+    "message": "MIRAGE is paused. Click to turn on."
+  },
+  "badge_watching": {
+    "message": "MIRAGE is watching this prompt."
+  },
+  "badge_found": {
+    "message": "$N$ items will be hidden before sending.",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "badge_found_one": {
+    "message": "1 item will be hidden before sending."
+  },
+  "badge_secret": {
+    "message": "This prompt has a secret. It won't be sent."
+  },
+  "badge_error": {
+    "message": "MIRAGE couldn't check this prompt."
+  },
+  "highlight_hover": {
+    "message": "Will be sent as $PLACEHOLDER$",
+    "placeholders": {
+      "placeholder": {
+        "content": "$1"
+      }
+    }
+  },
+  "highlight_notPersonal": {
+    "message": "Not personal"
+  },
+  "preview_title": {
+    "message": "$SITE$ will see this",
+    "placeholders": {
+      "site": {
+        "content": "$1"
+      }
+    }
+  },
+  "preview_footer": {
+    "message": "$N$ items hidden · real details stay on this device",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "preview_footer_one": {
+    "message": "1 item hidden · real details stay on this device"
+  },
+  "preview_send": {
+    "message": "Send protected"
+  },
+  "preview_cancel": {
+    "message": "Cancel"
+  },
+  "preview_allowOnce": {
+    "message": "Send without hiding"
+  },
+  "preview_confirmRaw": {
+    "message": "Send without hiding? $SITE$ will see your real details.",
+    "placeholders": {
+      "site": {
+        "content": "$1"
+      }
+    }
+  },
+  "preview_quickOffer": {
+    "message": "Skip this preview next time? Turn on Quick mode."
+  },
+  "quick_chip": {
+    "message": "$N$ items hidden",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "quick_chip_one": {
+    "message": "1 item hidden"
+  },
+  "block_title": {
+    "message": "This looks like $TYPE$. It won't be sent.",
+    "placeholders": {
+      "type": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_body": {
+    "message": "Secrets like this can give others access to your accounts."
+  },
+  "block_fix": {
+    "message": "Remove secret and send"
+  },
+  "block_edit": {
+    "message": "Edit prompt"
+  },
+  "restore_hover": {
+    "message": "Put back on your device. $SITE$ saw $PLACEHOLDER$.",
+    "placeholders": {
+      "site": {
+        "content": "$1"
+      },
+      "placeholder": {
+        "content": "$2"
+      }
+    }
+  },
+  "restore_failed": {
+    "message": "$SITE$ changed this placeholder, so MIRAGE couldn't put the detail back.",
+    "placeholders": {
+      "site": {
+        "content": "$1"
+      }
+    }
+  },
+  "restore_view": {
+    "message": "$SITE$ saw $PLACEHOLDER$. Your detail: $VALUE$",
+    "placeholders": {
+      "site": {
+        "content": "$1"
+      },
+      "placeholder": {
+        "content": "$2"
+      },
+      "value": {
+        "content": "$3"
+      }
+    }
+  },
+  "restore_expired": {
+    "message": "Details cleared after 24 hours."
+  },
+  "restore_copy": {
+    "message": "Copy with details"
+  },
+  "restore_copied": {
+    "message": "Copied with details"
+  },
+  "restore_copyFailed": {
+    "message": "Couldn't copy. Try again."
+  },
+  "error_check": {
+    "message": "MIRAGE couldn't check this prompt."
+  },
+  "error_retry": {
+    "message": "Try again"
+  },
+  "error_pageChanged": {
+    "message": "MIRAGE can't protect this page right now. Your prompts are not being checked."
+  },
+  "popup_status": {
+    "message": "Protecting $SITE$",
+    "placeholders": {
+      "site": {
+        "content": "$1"
+      }
+    }
+  },
+  "popup_unsupported": {
+    "message": "Not supported on this site yet"
+  },
+  "popup_week": {
+    "message": "$HIDDEN$ details hidden · $BLOCKED$ secrets stopped this week",
+    "placeholders": {
+      "hidden": {
+        "content": "$1"
+      },
+      "blocked": {
+        "content": "$2"
+      }
+    }
+  },
+  "popup_clear": {
+    "message": "Clear saved details"
+  },
+  "popup_clearConfirm": {
+    "message": "Clear all saved details? Older replies will show placeholders."
+  },
+  "popup_footer": {
+    "message": "Everything stays on this device."
+  },
+  "welcome_headline": {
+    "message": "MIRAGE hides your personal details from AI chatbots."
+  },
+  "welcome_done": {
+    "message": "You're protected on ChatGPT, Gemini, Claude, Copilot and Perplexity."
+  },
+  "prompt_note": {
+    "message": "(Keep the «» placeholders exactly as written.)"
+  },
+  "popup_paused": {
+    "message": "MIRAGE is paused"
+  },
+  "popup_turnOn": {
+    "message": "Turn MIRAGE on"
+  },
+  "popup_turnOff": {
+    "message": "Turn MIRAGE off"
+  },
+  "popup_quickMode": {
+    "message": "Quick mode"
+  },
+  "popup_quickModeHint": {
+    "message": "Skip the preview and send right away."
+  },
+  "popup_safeWords": {
+    "message": "Safe words"
+  },
+  "popup_safeWordsHint": {
+    "message": "Never hidden, even if they look personal."
+  },
+  "popup_alwaysHide": {
+    "message": "Always hide"
+  },
+  "popup_alwaysHideHint": {
+    "message": "Names or words to hide every time."
+  },
+  "popup_addPlaceholder": {
+    "message": "Add a word"
+  },
+  "popup_add": {
+    "message": "Add"
+  },
+  "popup_remove": {
+    "message": "Remove $WORD$",
+    "placeholders": {
+      "word": {
+        "content": "$1"
+      }
+    }
+  },
+  "popup_clearYes": {
+    "message": "Clear"
+  },
+  "popup_cleared": {
+    "message": "$N$ saved details cleared.",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "popup_cleared_one": {
+    "message": "1 saved detail cleared."
+  },
+  "popup_repo": {
+    "message": "Source code"
+  },
+  "preview_quickOfferQuestion": {
+    "message": "Skip this preview next time?"
+  },
+  "preview_quickOfferAction": {
+    "message": "Turn on Quick mode"
+  },
+  "menu_alwaysHide": {
+    "message": "Always hide \"%s\""
+  },
+  "welcome_title": {
+    "message": "Welcome to MIRAGE"
+  },
+  "welcome_youType": {
+    "message": "You type"
+  },
+  "welcome_aiReceives": {
+    "message": "The AI receives"
+  },
+  "welcome_youSee": {
+    "message": "You see"
+  },
+  "welcome_samplePrompt": {
+    "message": "I'm Priya Nair, PAN ABCDE1234F. Write a leave mail to my HOD."
+  },
+  "welcome_sampleName": {
+    "message": "Priya Nair"
+  },
+  "welcome_sampleReply": {
+    "message": "Dear HOD, I am «PERSON_1» (PAN «PAN_1») and I request leave on Monday. Regards, «PERSON_1»"
+  },
+  "welcome_seeAi": {
+    "message": "See what the AI receives"
+  },
+  "welcome_seeReply": {
+    "message": "See the reply"
+  },
+  "welcome_pin": {
+    "message": "Pin MIRAGE to your toolbar, so you can see it's on."
+  },
+  "welcome_openChatGPT": {
+    "message": "Open ChatGPT"
+  },
+  "welcome_openGemini": {
+    "message": "Open Gemini"
+  },
+  "welcome_fictional": {
+    "message": "All details shown are fictional."
+  },
+  "welcome_startAgain": {
+    "message": "Start again"
+  },
+  "secret_API_KEY": {
+    "message": "an API key"
+  },
+  "secret_PASSWORD": {
+    "message": "a password"
+  },
+  "secret_CARD": {
+    "message": "a card number"
+  },
+  "secret_OTP": {
+    "message": "a one-time code"
+  },
+  "type_AADHAAR": {
+    "message": "Aadhaar number"
+  },
+  "type_PAN": {
+    "message": "PAN"
+  },
+  "type_PHONE": {
+    "message": "Phone number"
+  },
+  "type_EMAIL": {
+    "message": "Email"
+  },
+  "type_UPI": {
+    "message": "UPI ID"
+  },
+  "type_IFSC": {
+    "message": "IFSC code"
+  },
+  "type_NAME": {
+    "message": "Name"
+  },
+  "type_CUSTOM": {
+    "message": "Always hidden"
+  },
+  "level_safe": {
+    "message": "Safe"
+  },
+  "level_low": {
+    "message": "Low risk"
+  },
+  "level_high": {
+    "message": "High risk"
+  },
+  "level_critical": {
+    "message": "Critical risk"
+  },
+  "level_chip": {
+    "message": "$LEVEL$ · $SCORE$",
+    "placeholders": {
+      "level": {
+        "content": "$1"
+      },
+      "score": {
+        "content": "$2"
+      }
+    }
+  },
+  "badge_limited": {
+    "message": "MIRAGE found this prompt box by itself. Protection may be limited."
+  },
+  "badge_siteOff": {
+    "message": "MIRAGE is off for $SITE$. Turn it on in the popup.",
+    "placeholders": {
+      "site": {
+        "content": "$1"
+      }
+    }
+  },
+  "badge_warn": {
+    "message": "Health details stay in. The AI needs them."
+  },
+  "review_title": {
+    "message": "$N$ items will be hidden before sending",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "review_title_one": {
+    "message": "1 item will be hidden before sending"
+  },
+  "review_titleKeepAll": {
+    "message": "Nothing will be hidden"
+  },
+  "review_subtitle": {
+    "message": "$SITE$ sees placeholders instead. Real details stay on this device.",
+    "placeholders": {
+      "site": {
+        "content": "$1"
+      }
+    }
+  },
+  "review_aiSees": {
+    "message": "What $SITE$ will see",
+    "placeholders": {
+      "site": {
+        "content": "$1"
+      }
+    }
+  },
+  "review_protect": {
+    "message": "Protect & send"
+  },
+  "review_send": {
+    "message": "Send"
+  },
+  "review_details": {
+    "message": "Review"
+  },
+  "review_hideDetails": {
+    "message": "Hide details"
+  },
+  "review_sendAnyway": {
+    "message": "Send anyway"
+  },
+  "review_secretLocked": {
+    "message": "Secrets can't be sent while Block secrets is on."
+  },
+  "review_hide": {
+    "message": "Hide"
+  },
+  "review_remove": {
+    "message": "Remove"
+  },
+  "review_keep": {
+    "message": "Keep"
+  },
+  "review_kept": {
+    "message": "Sent as typed"
+  },
+  "review_removed": {
+    "message": "Removed"
+  },
+  "review_warnHealth": {
+    "message": "Kept. The AI needs it to answer."
+  },
+  "review_why": {
+    "message": "Why $SCORE$?",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "review_near": {
+    "message": "near “$WORD$”",
+    "placeholders": {
+      "word": {
+        "content": "$1"
+      }
+    }
+  },
+  "review_sure": {
+    "message": "$N$% sure",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "review_confirmSecret": {
+    "message": "Send anyway? $SITE$ will see this secret, and anyone who can read the chat could use it.",
+    "placeholders": {
+      "site": {
+        "content": "$1"
+      }
+    }
+  },
+  "review_confirmSecretYes": {
+    "message": "Send with secret"
+  },
+  "review_back": {
+    "message": "Go back"
+  },
+  "review_toggleLabel": {
+    "message": "$ACTION$ $TYPE$",
+    "placeholders": {
+      "action": {
+        "content": "$1"
+      },
+      "type": {
+        "content": "$2"
+      }
+    }
+  },
+  "reason_checksum": {
+    "message": "Check digit is valid"
+  },
+  "reason_knownFormat": {
+    "message": "Matches a known key format"
+  },
+  "reason_pattern": {
+    "message": "Matches the usual format"
+  },
+  "reason_context": {
+    "message": "Named in the text"
+  },
+  "reason_assignment": {
+    "message": "Assigned to a secret name"
+  },
+  "reason_entropy": {
+    "message": "Long random-looking string"
+  },
+  "reason_custom": {
+    "message": "On your Always hide list"
+  },
+  "risk_COMBO_HEALTH_IDENTITY": {
+    "message": "Health detail tied to you"
+  },
+  "risk_COMBO_ID_CONTACT": {
+    "message": "ID together with contact details"
+  },
+  "risk_FLOOR_CRITICAL": {
+    "message": "Any secret is critical"
+  },
+  "risk_FLOOR_HIGH": {
+    "message": "Any ID number is at least high"
+  },
+  "reply_one": {
+    "message": "This reply looks like it contains $TYPE$.",
+    "placeholders": {
+      "type": {
+        "content": "$1"
+      }
+    }
+  },
+  "reply_many": {
+    "message": "This reply may contain $N$ secrets or ID numbers.",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "reply_note": {
+    "message": "MIRAGE didn't change the reply."
+  },
+  "reply_show": {
+    "message": "Show me"
+  },
+  "reply_dismiss": {
+    "message": "Dismiss"
+  },
+  "secret_PRIVATE_KEY": {
+    "message": "a private key"
+  },
+  "type_BANK_ACCOUNT": {
+    "message": "Bank account number"
+  },
+  "type_IP_ADDRESS": {
+    "message": "IP address"
+  },
+  "type_DOB": {
+    "message": "Date of birth"
+  },
+  "type_HEALTH": {
+    "message": "Health detail"
+  },
+  "article_AADHAAR": {
+    "message": "an Aadhaar number"
+  },
+  "article_PAN": {
+    "message": "a PAN"
+  },
+  "article_BANK_ACCOUNT": {
+    "message": "a bank account number"
+  },
+  "kind_openai": {
+    "message": "an OpenAI API key"
+  },
+  "kind_anthropic": {
+    "message": "an Anthropic API key"
+  },
+  "kind_aws_access_key": {
+    "message": "an AWS access key"
+  },
+  "kind_aws_secret_key": {
+    "message": "an AWS secret key"
+  },
+  "kind_github": {
+    "message": "a GitHub token"
+  },
+  "kind_gitlab": {
+    "message": "a GitLab token"
+  },
+  "kind_google": {
+    "message": "a Google API key"
+  },
+  "kind_google_oauth": {
+    "message": "a Google OAuth secret"
+  },
+  "kind_slack": {
+    "message": "a Slack token"
+  },
+  "kind_stripe": {
+    "message": "a Stripe key"
+  },
+  "kind_jwt": {
+    "message": "a login token (JWT)"
+  },
+  "kind_bearer": {
+    "message": "an access token"
+  },
+  "kind_npm": {
+    "message": "an npm token"
+  },
+  "kind_huggingface": {
+    "message": "a Hugging Face token"
+  },
+  "kind_sendgrid": {
+    "message": "a SendGrid key"
+  },
+  "kind_twilio": {
+    "message": "a Twilio key"
+  },
+  "kind_webhook": {
+    "message": "a webhook URL"
+  },
+  "kind_telegram": {
+    "message": "a Telegram bot token"
+  },
+  "kind_env_secret": {
+    "message": "a secret value"
+  },
+  "kind_high_entropy": {
+    "message": "a secret key"
+  },
+  "kind_connection_string": {
+    "message": "a database password"
+  },
+  "kind_url_credentials": {
+    "message": "a password in a link"
+  },
+  "popup_active": {
+    "message": "Protection on"
+  },
+  "popup_siteOff": {
+    "message": "Off for $SITE$",
+    "placeholders": {
+      "site": {
+        "content": "$1"
+      }
+    }
+  },
+  "popup_today": {
+    "message": "Today"
+  },
+  "popup_statChecked": {
+    "message": "prompts checked"
+  },
+  "popup_statHidden": {
+    "message": "details hidden"
+  },
+  "popup_statBlocked": {
+    "message": "secrets stopped"
+  },
+  "popup_statReplies": {
+    "message": "reply warnings"
+  },
+  "popup_platforms": {
+    "message": "Platforms"
+  },
+  "popup_beta": {
+    "message": "beta"
+  },
+  "popup_betaHint": {
+    "message": "Not yet checked on the live site. MIRAGE falls back to finding the prompt box by itself."
+  },
+  "popup_local": {
+    "message": "Checks run on this device. No prompt is sent to MIRAGE."
+  },
+  "popup_settings": {
+    "message": "Settings"
+  },
+  "popup_thisSite": {
+    "message": "Protect $SITE$",
+    "placeholders": {
+      "site": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_title": {
+    "message": "MIRAGE settings"
+  },
+  "settings_protection": {
+    "message": "Protection"
+  },
+  "settings_enabled": {
+    "message": "MIRAGE is on"
+  },
+  "settings_enabledHint": {
+    "message": "Checks every prompt before it is sent."
+  },
+  "settings_mode": {
+    "message": "When something is found"
+  },
+  "settings_modeReview": {
+    "message": "Ask me first"
+  },
+  "settings_modeReviewHint": {
+    "message": "Show what the AI will see, then you choose."
+  },
+  "settings_modeAuto": {
+    "message": "Protect automatically"
+  },
+  "settings_modeAutoHint": {
+    "message": "Hide personal details and send. Secrets always ask."
+  },
+  "settings_blockSecrets": {
+    "message": "Block secrets"
+  },
+  "settings_blockSecretsHint": {
+    "message": "A prompt with a key, password, card number or code can only be sent with it removed."
+  },
+  "settings_checkReplies": {
+    "message": "Check AI replies"
+  },
+  "settings_checkRepliesHint": {
+    "message": "Say when a reply contains a secret or ID number. Replies are never changed."
+  },
+  "settings_reveal": {
+    "message": "Show real details in replies"
+  },
+  "settings_revealHint": {
+    "message": "Off: replies keep placeholders and the real detail shows on hover only."
+  },
+  "settings_detection": {
+    "message": "What MIRAGE looks for"
+  },
+  "cat_identity": {
+    "message": "Identity"
+  },
+  "cat_identityHint": {
+    "message": "Aadhaar, PAN, names, date of birth"
+  },
+  "cat_contact": {
+    "message": "Contact details"
+  },
+  "cat_contactHint": {
+    "message": "Phone numbers, email addresses"
+  },
+  "cat_financial": {
+    "message": "Financial"
+  },
+  "cat_financialHint": {
+    "message": "Card numbers, bank accounts, UPI IDs, IFSC"
+  },
+  "cat_credentials": {
+    "message": "Passwords and codes"
+  },
+  "cat_credentialsHint": {
+    "message": "Passwords, one-time codes, private keys"
+  },
+  "cat_apiKeys": {
+    "message": "API keys and tokens"
+  },
+  "cat_apiKeysHint": {
+    "message": "AWS, OpenAI, GitHub, Google, Slack, Stripe and more"
+  },
+  "cat_location": {
+    "message": "Network location"
+  },
+  "cat_locationHint": {
+    "message": "IP addresses"
+  },
+  "cat_health": {
+    "message": "Health context"
+  },
+  "cat_healthHint": {
+    "message": "Lab results and conditions. Kept, but they raise the risk score."
+  },
+  "settings_catOffWarn": {
+    "message": "Turning this off means these details are sent as typed."
+  },
+  "settings_platforms": {
+    "message": "Platforms"
+  },
+  "settings_words": {
+    "message": "Words"
+  },
+  "settings_privacy": {
+    "message": "Privacy"
+  },
+  "privacy_local": {
+    "message": "Every check runs in your browser. MIRAGE has no server and makes no network requests."
+  },
+  "privacy_stores": {
+    "message": "Stored on this device: your settings, anonymous counts, and the details you hid (encrypted, cleared after 24 hours) so replies can show them."
+  },
+  "privacy_never": {
+    "message": "Never stored: your prompts, secrets, passwords or keys, and your browsing history."
+  },
+  "privacy_sites": {
+    "message": "MIRAGE can only see the five chatbot sites listed above."
+  },
+  "settings_data": {
+    "message": "Saved details"
+  }
 }

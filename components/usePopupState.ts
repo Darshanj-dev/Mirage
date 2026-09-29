@@ -59,6 +59,7 @@ export function usePopupState() {
   }, []);
 
   const actions = {
+    save: (patch: SettingsPatch) => save(patch),
     setEnabled: (enabled: boolean) => save({ enabled }),
     setQuickMode: (quickMode: boolean) => save({ quickMode }),
     addSafeWord: (word: string) => {

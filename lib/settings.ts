@@ -2,26 +2,41 @@
 // plain JSON in storage.local. Written only by the service worker; pages read them via messages.
 
 import { browser } from 'wxt/browser';
-import type { MaskType } from './detector/types';
+import { CATEGORIES } from './detector/taxonomy';
+import type { Category, MaskType } from './detector/types';
+import { SITE_IDS, type Site } from './sites/hosts';
 
-export type Site = 'chatgpt' | 'gemini';
+export type { Site } from './sites/hosts';
+
+/** How real details come back in replies: written into the reply, or shown on hover only. */
+export type RevealMode = 'inline' | 'hover';
 
 export interface Settings {
   v: 1;
   enabled: boolean;
-  quickMode: boolean;
+  quickMode: boolean; // "Protect automatically": hide personal details and send without a preview
   protectedSendCount: number; // drives the Quick mode offer after 5
   quickModeOffered: boolean;
   safeWords: string[]; // normalized; words never hidden
   awsNameCheck: boolean; // only if AWS is set up
-  sites: { chatgpt: boolean; gemini: boolean };
+  sites: Record<Site, boolean>;
+  /** On: a prompt with a secret can only be sent with the secret removed. Off: "Send anyway" after a confirm. */
+  blockSecrets: boolean;
+  /** Detection groups; off means MIRAGE ignores that kind of detail. */
+  categories: Record<Category, boolean>;
+  revealMode: RevealMode;
+  /** Check AI replies for secrets and IDs and say so (never changes the reply). */
+  checkReplies: boolean;
 }
 
 export interface Counts {
+  checked: number; // prompts MIRAGE checked before they were sent
+  protectedSends: number; // prompts sent with something hidden or removed
   hidden: number; // personal details replaced
-  blocked: number; // secrets stopped
+  blocked: number; // secrets stopped or removed
   restoreFailures: number; // placeholders the AI changed
   allowOnce: number; // sends without hiding
+  replyWarnings: number; // AI replies that contained a secret or ID
   byType: Partial<Record<MaskType | 'SECRET', number>>;
 }
 
@@ -29,6 +44,8 @@ export interface Stats {
   v: 1;
   weekStart: string; // ISO date of this week's Monday, e.g. '2026-09-28'
   week: Counts; // reset when weekStart changes
+  day: string; // ISO date of today (local time)
+  today: Counts; // reset when day changes
   lifetime: Counts;
 }
 
@@ -49,18 +66,36 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   quickModeOffered: false,
   safeWords: [],
   awsNameCheck: false,
-  sites: { chatgpt: true, gemini: true },
+  sites: { chatgpt: true, gemini: true, claude: true, copilot: true, perplexity: true },
+  blockSecrets: true,
+  categories: { identity: true, contact: true, financial: true, credentials: true, apiKeys: true, location: true, health: true },
+  revealMode: 'inline',
+  checkReplies: true,
 };
 
-export const emptyCounts = (): Counts => ({ hidden: 0, blocked: 0, restoreFailures: 0, allowOnce: 0, byType: {} });
+export const emptyCounts = (): Counts => ({
+  checked: 0,
+  protectedSends: 0,
+  hidden: 0,
+  blocked: 0,
+  restoreFailures: 0,
+  allowOnce: 0,
+  replyWarnings: 0,
+  byType: {},
+});
+
+const pad = (n: number) => String(n).padStart(2, '0');
+const isoDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+/** ISO date (local time) of the day containing `now`. */
+export const dayOf = (now: number): string => isoDate(new Date(now));
 
 /** ISO date (local time) of the Monday that starts the week containing `now`. */
 export function weekStartOf(now: number): string {
   const d = new Date(now);
   const daysSinceMonday = (d.getDay() + 6) % 7;
   d.setDate(d.getDate() - daysSinceMonday);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return isoDate(d);
 }
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
@@ -78,6 +113,7 @@ export const normalizeWord = (word: string): string => word.trim().replace(/\s+/
 export function settingsWithDefaults(raw: unknown): Settings {
   const r = isObject(raw) ? raw : {};
   const sites = isObject(r.sites) ? r.sites : {};
+  const categories = isObject(r.categories) ? r.categories : {};
   return {
     v: 1,
     enabled: bool(r.enabled, DEFAULT_SETTINGS.enabled),
@@ -86,10 +122,13 @@ export function settingsWithDefaults(raw: unknown): Settings {
     quickModeOffered: bool(r.quickModeOffered, DEFAULT_SETTINGS.quickModeOffered),
     safeWords: [...new Set(strings(r.safeWords).map(normalizeWord).filter(Boolean))],
     awsNameCheck: bool(r.awsNameCheck, DEFAULT_SETTINGS.awsNameCheck),
-    sites: {
-      chatgpt: bool(sites.chatgpt, DEFAULT_SETTINGS.sites.chatgpt),
-      gemini: bool(sites.gemini, DEFAULT_SETTINGS.sites.gemini),
-    },
+    sites: Object.fromEntries(SITE_IDS.map((id) => [id, bool(sites[id], DEFAULT_SETTINGS.sites[id])])) as Record<Site, boolean>,
+    blockSecrets: bool(r.blockSecrets, DEFAULT_SETTINGS.blockSecrets),
+    categories: Object.fromEntries(
+      CATEGORIES.map((c) => [c, bool(categories[c], DEFAULT_SETTINGS.categories[c])]),
+    ) as Record<Category, boolean>,
+    revealMode: r.revealMode === 'hover' ? 'hover' : 'inline',
+    checkReplies: bool(r.checkReplies, DEFAULT_SETTINGS.checkReplies),
   };
 }
 
@@ -102,10 +141,13 @@ function countsWithDefaults(raw: unknown): Counts {
     }
   }
   return {
+    checked: num(r.checked, 0),
+    protectedSends: num(r.protectedSends, 0),
     hidden: num(r.hidden, 0),
     blocked: num(r.blocked, 0),
     restoreFailures: num(r.restoreFailures, 0),
     allowOnce: num(r.allowOnce, 0),
+    replyWarnings: num(r.replyWarnings, 0),
     byType,
   };
 }
@@ -114,10 +156,13 @@ export function statsWithDefaults(raw: unknown, now: number): Stats {
   const r = isObject(raw) ? raw : {};
   const thisWeek = weekStartOf(now);
   const sameWeek = r.weekStart === thisWeek;
+  const today = dayOf(now);
   return {
     v: 1,
     weekStart: thisWeek,
     week: sameWeek ? countsWithDefaults(r.week) : emptyCounts(),
+    day: today,
+    today: r.day === today ? countsWithDefaults(r.today) : emptyCounts(),
     lifetime: countsWithDefaults(r.lifetime),
   };
 }
@@ -140,10 +185,13 @@ export function addCounts(base: Counts, delta: Partial<Counts>): Counts {
     byType[key] = (byType[key] ?? 0) + (v ?? 0);
   }
   return {
+    checked: base.checked + (delta.checked ?? 0),
+    protectedSends: base.protectedSends + (delta.protectedSends ?? 0),
     hidden: base.hidden + (delta.hidden ?? 0),
     blocked: base.blocked + (delta.blocked ?? 0),
     restoreFailures: base.restoreFailures + (delta.restoreFailures ?? 0),
     allowOnce: base.allowOnce + (delta.allowOnce ?? 0),
+    replyWarnings: base.replyWarnings + (delta.replyWarnings ?? 0),
     byType,
   };
 }
@@ -168,7 +216,12 @@ export async function loadStats(now: number = Date.now()): Promise<Stats> {
 
 export async function recordCounts(delta: Partial<Counts>, now: number = Date.now()): Promise<Stats> {
   const stats = await loadStats(now);
-  const next: Stats = { ...stats, week: addCounts(stats.week, delta), lifetime: addCounts(stats.lifetime, delta) };
+  const next: Stats = {
+    ...stats,
+    week: addCounts(stats.week, delta),
+    today: addCounts(stats.today, delta),
+    lifetime: addCounts(stats.lifetime, delta),
+  };
   await browser.storage.local.set({ stats: next });
   return next;
 }

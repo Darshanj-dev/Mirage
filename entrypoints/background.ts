@@ -3,13 +3,28 @@
 import { browser } from 'wxt/browser';
 import { addAlwaysHide } from '@/lib/alwaysHide';
 import { handleMessage } from '@/lib/handlers';
+import type { Sender } from '@/lib/messages';
+import { siteForHost } from '@/lib/sites';
+import { ALL_MATCHES } from '@/lib/sites/hosts';
 import { ensureDefaults, loadSettings, saveMeta } from '@/lib/settings';
 import { t } from '@/lib/strings';
 import { sweepVault } from '@/lib/vault';
 
 const SWEEP_ALARM = 'vault-sweep';
 const MENU_ALWAYS_HIDE = 'mirage-always-hide';
-const SITE_PATTERNS = ['https://chatgpt.com/*', 'https://gemini.google.com/*'];
+
+/** MIRAGE's own pages (popup, settings, welcome) vs. a content script inside a chatbot page. */
+function senderOf(sender: { url?: string; tab?: { url?: string } }): Sender {
+  const ownOrigin = browser.runtime.getURL('/');
+  if (sender.url?.startsWith(ownOrigin)) return { kind: 'extension' };
+  let site = null;
+  try {
+    site = siteForHost(new URL(sender.tab?.url ?? sender.url ?? '').hostname)?.id ?? null;
+  } catch {
+    site = null;
+  }
+  return { kind: 'page', site };
+}
 
 async function sweep(): Promise<void> {
   const now = Date.now();
@@ -32,7 +47,7 @@ export default defineBackground(() => {
       id: MENU_ALWAYS_HIDE,
       title: t('menu_alwaysHide'),
       contexts: ['selection'],
-      documentUrlPatterns: SITE_PATTERNS,
+      documentUrlPatterns: [...ALL_MATCHES],
     });
     if (reason === 'install') await browser.tabs.create({ url: browser.runtime.getURL('/welcome.html') });
     await updateOffDot();
@@ -41,7 +56,7 @@ export default defineBackground(() => {
   browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // Only our own content scripts and pages may talk to the vault.
     if (sender.id !== browser.runtime.id) return false;
-    void handleMessage(msg).then(sendResponse);
+    void handleMessage(msg, Date.now(), senderOf(sender)).then(sendResponse);
     return true; // respond asynchronously
   });
 

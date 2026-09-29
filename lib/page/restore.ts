@@ -27,18 +27,24 @@ export interface RestoredSpan {
 
 export interface RestorerOptions {
   site: SiteConfig;
-  /** Text nodes to leave alone completely, e.g. inside the prompt box. */
+  /**
+   * Text nodes to leave alone completely: the prompt box, and anything outside the conversation.
+   * Placeholders are only ever filled in where the chat's messages are, so a page (or a reply
+   * crafted by prompt injection) that writes «PAN_1» into, say, a hidden form field gets nothing.
+   */
   isExcluded(node: Text): boolean;
-  /** Text nodes the user or site can edit: never written to, values shown on hover only. */
+  /** Text nodes where the value is shown on hover only: editable boxes, or everything in hover mode. */
   isEditable(node: Text): boolean;
   onSpans(spans: RestoredSpan[]): void;
   onFailures(count: number): void;
+  /** Every real value known for this page so far (so the reply check never flags the user's own). */
+  onValues?(values: readonly string[]): void;
 }
 
 const SKIP_PARENTS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT']);
 const BATCH_MS = 60;
 
-export function startRestorer({ site, isExcluded, isEditable, onSpans, onFailures }: RestorerOptions): () => void {
+export function startRestorer({ site, isExcluded, isEditable, onSpans, onFailures, onValues }: RestorerOptions): () => void {
   const values = new Map<string, Map<string, string>>(); // chatId -> token -> value (page memory only)
   const written = new WeakMap<Text, string>(); // text MIRAGE last wrote into a node
   const spans = new Map<Text, RestoredSpan[]>();
@@ -84,6 +90,7 @@ export function startRestorer({ site, isExcluded, isEditable, onSpans, onFailure
       if (res.ok) {
         for (const [token, value] of Object.entries(res.values)) known.set(token, value);
         found = res.found;
+        onValues?.([...values.values()].flatMap((m) => [...m.values()]));
       }
     }
     if (stopped) return;

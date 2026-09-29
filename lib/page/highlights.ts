@@ -4,6 +4,8 @@
 const STYLE_ID = 'mirage-highlight-style';
 const MASK = 'mirage-mask';
 const BLOCK = 'mirage-block';
+const WARN = 'mirage-warn';
+const REPLY = 'mirage-reply-risk';
 const RESTORED = 'mirage-restored';
 const FAILED = 'mirage-failed';
 
@@ -14,6 +16,8 @@ const CSS_TEXT = `
 ::highlight(${BLOCK}) { text-decoration: underline wavy 2px #dc2626; text-underline-offset: 3px; }
 ::highlight(${RESTORED}) { text-decoration: underline dotted 1.5px rgb(37 99 235 / 0.75); text-underline-offset: 3px; }
 ::highlight(${FAILED}) { text-decoration: underline dotted 1.5px #d97706; text-underline-offset: 3px; }
+::highlight(${WARN}) { text-decoration: underline dotted 2px #d97706; text-underline-offset: 3px; }
+::highlight(${REPLY}) { background-color: rgb(245 158 11 / 0.22); text-decoration: underline wavy 1.5px #d97706; text-underline-offset: 3px; }
 `;
 
 export const highlightsSupported = (): boolean => typeof CSS !== 'undefined' && 'highlights' in CSS;
@@ -32,16 +36,27 @@ function set(name: string, ranges: readonly Range[]): void {
   CSS.highlights.set(name, new Highlight(...ranges));
 }
 
-/** Findings in the prompt box: blue for hidden details, red for secrets. */
-export function setHighlights(mask: readonly Range[], block: readonly Range[]): void {
+/** Findings in the prompt box: blue for hidden details, red for secrets, amber dots for kept health details. */
+export function setHighlights(mask: readonly Range[], block: readonly Range[], warn: readonly Range[] = []): void {
   set(MASK, mask);
   set(BLOCK, block);
+  set(WARN, warn);
 }
 
 export function clearHighlights(): void {
   if (!highlightsSupported()) return;
   CSS.highlights.delete(MASK);
   CSS.highlights.delete(BLOCK);
+  CSS.highlights.delete(WARN);
+}
+
+/** Secrets or IDs found in AI replies (never changed, only marked). */
+export function setReplyHighlights(ranges: readonly Range[]): void {
+  set(REPLY, ranges);
+}
+
+export function clearReplyHighlights(): void {
+  if (highlightsSupported()) CSS.highlights.delete(REPLY);
 }
 
 /** Values put back in the chat (faint dotted blue), and placeholders that could not be (amber). */

@@ -2,7 +2,8 @@
 // Pure functions: the service worker keeps the state inside the encrypted vault.
 
 import { normalizeValue } from './detector/normalize';
-import type { MaskType } from './detector/types';
+import { KIND_LABEL, SECRET_LABEL } from './detector/taxonomy';
+import type { MaskType, SecretKind, SecretType } from './detector/types';
 
 /** Placeholder label per type. Names from rules, AWS or the Always mask list all read as PERSON. */
 const LABELS: Record<MaskType, string> = {
@@ -12,6 +13,9 @@ const LABELS: Record<MaskType, string> = {
   EMAIL: 'EMAIL',
   UPI: 'UPI',
   IFSC: 'IFSC',
+  BANK_ACCOUNT: 'ACCOUNT',
+  IP_ADDRESS: 'IP',
+  DOB: 'DOB',
   NAME: 'PERSON',
   CUSTOM: 'PERSON',
 };
@@ -21,8 +25,17 @@ export function formatToken(label: string, n: number): string {
   return `«${label}_${n}»`;
 }
 
-/** Put in place of a secret by "Remove secret and send"; never restored. */
+/** Put in place of a secret by older builds; never restored. */
 export const SECRET_REMOVED = '«SECRET_REMOVED»';
+
+/**
+ * What a removed secret becomes: a named placeholder like «AWS_SECRET_KEY_REMOVED», so the AI
+ * still knows what kind of value was there. It carries no number and is never stored, so it can
+ * never be put back into a reply (it does not match TOKEN_PATTERN).
+ */
+export function removedPlaceholder(type: SecretType, kind?: SecretKind): string {
+  return `«${(kind && KIND_LABEL[kind]) || SECRET_LABEL[type]}_REMOVED»`;
+}
 
 /** Matches any numbered placeholder, e.g. «PAN_1» or «PERSON_12». */
 export const TOKEN_PATTERN = /«([A-Z]+)_(\d+)»/g;

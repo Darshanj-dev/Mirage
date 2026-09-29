@@ -84,3 +84,13 @@ describe('tokenizer', () => {
     expect(findTokens(reply)).toEqual(['«PERSON_1»', '«PAN_1»', '«PHONE_12»']);
   });
 });
+
+describe('removedPlaceholder', () => {
+  it('names the kind of secret and can never be restored', async () => {
+    const { removedPlaceholder, TOKEN_PATTERN } = await import('./tokenizer');
+    expect(removedPlaceholder('API_KEY', 'aws_secret_key')).toBe('«AWS_SECRET_KEY_REMOVED»');
+    expect(removedPlaceholder('PASSWORD')).toBe('«PASSWORD_REMOVED»');
+    expect(removedPlaceholder('CARD')).toBe('«CARD_REMOVED»');
+    expect(new RegExp(TOKEN_PATTERN.source).test(removedPlaceholder('API_KEY', 'openai'))).toBe(false);
+  });
+});

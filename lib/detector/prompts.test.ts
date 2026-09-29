@@ -1,4 +1,6 @@
 // M1 gate: the detector finds exactly the expected items in every test prompt.
+// Names and health terms are scored separately: the set lists names under "names" (found by the
+// context rule when a phrase like "I'm" or "Dr." introduces them) and health terms are only warnings.
 
 import { describe, expect, it } from 'vitest';
 import data from '../../test-prompts/prompts.json';
@@ -24,10 +26,24 @@ describe('test prompt set', () => {
   });
 
   it.each(prompts.map((p) => [p.id, p] as const))('%s finds exactly the expected items', (_id, prompt) => {
-    const found = detect(prompt.text).map(({ type, value }) => ({ type, value }));
+    const found = detect(prompt.text)
+      .filter((f) => f.type !== 'NAME' && f.policy !== 'warn')
+      .map(({ type, value }) => ({ type, value }));
     const byPosition = (a: { value: string }, b: { value: string }) =>
       prompt.text.indexOf(a.value) - prompt.text.indexOf(b.value);
     expect(found).toEqual([...prompt.expected].sort(byPosition));
+  });
+
+  it.each(prompts.map((p) => [p.id, p] as const))('%s finds no name that is not one', (_id, prompt) => {
+    for (const f of detect(prompt.text).filter((x) => x.type === 'NAME')) {
+      expect(prompt.names?.some((n) => n.includes(f.value)), `${f.value} is not a listed name`).toBe(true);
+    }
+  });
+
+  it('finds most listed names from context alone', () => {
+    const listed = prompts.flatMap((p) => (p.names ?? []).map((n) => [p, n] as const));
+    const found = listed.filter(([p, n]) => detect(p.text).some((f) => f.type === 'NAME' && n.includes(f.value)));
+    expect(found.length / listed.length).toBeGreaterThanOrEqual(0.5);
   });
 
   it('blocks every secret prompt', () => {

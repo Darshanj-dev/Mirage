@@ -1,26 +1,36 @@
 // What happens when the user presses Send (docs/app-flow.md, Main user flow):
-//   nothing found -> sent as typed; personal details -> preview, then sent with placeholders;
-//   secret -> blocked. Any error -> blocked with a message. Raw text is never sent silently.
+//   nothing to hide -> sent as typed; anything found -> review panel (risk, items, what the AI
+//   will see) -> Protect & send, Edit prompt, or Send anyway (a secret needs a second confirm,
+//   and can't be sent at all while Block secrets is on). Quick mode skips the panel for personal
+//   details only. Any error -> blocked with a message. The prompt is never changed silently.
 
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { detect } from '@/lib/detector/detect';
-import { isSecretType, type Finding, type MaskType } from '@/lib/detector/types';
+import { isMaskType, isSecretType, type Finding, type MaskType } from '@/lib/detector/types';
 import { sendMessage } from '@/lib/messages';
 import { currentChatId, markChatIdUsed } from '@/lib/page/chatId';
 import { replaceInEditor, type EditorReplacement } from '@/lib/page/editor';
 import { readPrompt } from '@/lib/page/promptText';
 import type { SendGuard } from '@/lib/page/sendGuard';
+import { assessRisk, type Risk } from '@/lib/risk';
 import type { Counts } from '@/lib/settings';
 import { findPromptBox, type SiteConfig } from '@/lib/sites';
 import { t } from '@/lib/strings';
-import { SECRET_REMOVED, replaceSpans } from '@/lib/tokenizer';
+import { removedPlaceholder, replaceSpans } from '@/lib/tokenizer';
 import type { PageSettings } from './usePromptWatcher';
 
-export type Panel =
-  | { kind: 'preview'; original: string; masked: string; replacements: EditorReplacement[]; hidden: Finding[] }
-  | { kind: 'block'; text: string; findings: Finding[] }
-  | { kind: 'error' }
-  | { kind: 'confirmRaw'; back: Panel };
+export interface ReviewState {
+  kind: 'review';
+  text: string;
+  findings: Finding[];
+  risk: Risk;
+  /** Placeholder each finding would get (null for warnings; removed-secret label for secrets). */
+  tokens: (string | null)[];
+  /** Indexes of findings the user chose to send as typed. */
+  keep: ReadonlySet<number>;
+}
+
+export type Panel = ReviewState | { kind: 'error' } | { kind: 'confirmRaw'; back: ReviewState } | { kind: 'confirmSecret'; back: ReviewState };
 
 const QUICK_CHIP_MS = 2000;
 
@@ -30,10 +40,28 @@ const promptNote = () => ` ${t('prompt_note')}`;
 function countsFor(findings: readonly Finding[]): Partial<Counts> {
   const byType: Counts['byType'] = {};
   for (const f of findings) {
+    if (!isSecretType(f.type) && !isMaskType(f.type)) continue;
     const key = isSecretType(f.type) ? 'SECRET' : f.type;
     byType[key] = (byType[key] ?? 0) + 1;
   }
   return { byType };
+}
+
+/** The prompt exactly as it will be sent, given the placeholders and what the user keeps. */
+export function protectedText(review: Pick<ReviewState, 'text' | 'findings' | 'tokens' | 'keep'>): {
+  text: string;
+  replacements: EditorReplacement[];
+} {
+  const replacements: EditorReplacement[] = [];
+  review.findings.forEach((f, i) => {
+    const token = review.tokens[i];
+    if (f.policy === 'warn' || review.keep.has(i) || !token) return;
+    replacements.push({ start: f.start, end: f.end, expected: f.value, text: token });
+  });
+  const hasPlaceholders = review.findings.some((f, i) => f.policy === 'mask' && !review.keep.has(i));
+  const note = hasPlaceholders ? promptNote() : '';
+  if (note) replacements.push({ start: review.text.length, end: review.text.length, expected: '', text: note });
+  return { text: replaceSpans(review.text, replacements), replacements };
 }
 
 export function useSendFlow(
@@ -52,24 +80,45 @@ export function useSendFlow(
     [site],
   );
 
-  /** Writes placeholders into the box, checks the result, then presses Send. */
-  const sendMasked = useCallback(
-    async (box: HTMLElement, preview: Extract<Panel, { kind: 'preview' }>): Promise<boolean> => {
-      const note = promptNote();
-      const ok = await replaceInEditor(
-        box,
-        [...preview.replacements, { start: preview.original.length, end: preview.original.length, expected: '', text: note }],
-        preview.masked,
-      );
-      if (!ok || !(await guard.sendNow(box))) return false;
+  /** Saves placeholders for what is hidden, writes the protected prompt into the box, presses Send. */
+  const sendProtectedNow = useCallback(
+    async (box: HTMLElement, review: ReviewState): Promise<boolean> => {
+      const hide = review.findings.map((f, i) => ({ f, i })).filter(({ f, i }) => f.policy === 'mask' && !review.keep.has(i));
+      const tokens = [...review.tokens];
+      if (hide.length > 0) {
+        const chatId = currentChatId(site);
+        const res = await sendMessage({
+          type: 'TOKENIZE',
+          site: site.id,
+          chatId,
+          findings: hide.map(({ f }) => ({ type: f.type as MaskType, value: f.value })),
+        });
+        if (!res.ok || res.tokens.length !== hide.length) return false;
+        markChatIdUsed(chatId);
+        hide.forEach(({ i }, n) => (tokens[i] = res.tokens[n]!));
+      }
+      const out = protectedText({ ...review, tokens });
+      if (out.replacements.length > 0 && !(await replaceInEditor(box, out.replacements, out.text))) return false;
+      if (!(await guard.sendNow(box))) return false;
 
-      const hidden = preview.hidden.length;
-      void sendMessage({ type: 'COUNT', delta: { hidden, ...countsFor(preview.hidden) } });
+      const removed = review.findings.filter((f, i) => f.policy === 'block' && !review.keep.has(i));
+      const hidden = hide.map(({ f }) => f);
+      void sendMessage({
+        type: 'COUNT',
+        delta: {
+          checked: 1,
+          protectedSends: hidden.length + removed.length > 0 ? 1 : 0,
+          hidden: hidden.length,
+          blocked: removed.length,
+          allowOnce: review.keep.size > 0 ? 1 : 0,
+          ...countsFor([...hidden, ...removed]),
+        },
+      });
       const count = settingsRef.current?.protectedSendCount ?? 0;
       void sendMessage({ type: 'SET_SETTINGS', settings: { protectedSendCount: count + 1 } });
       return true;
     },
-    [guard, settingsRef],
+    [guard, settingsRef, site],
   );
 
   const handleSend = useCallback(
@@ -90,72 +139,72 @@ export function useSendFlow(
 
         const { text } = readPrompt(box);
         const findings = detect(text, settings);
-        const secrets = findings.filter((f) => f.policy === 'block');
-        if (secrets.length > 0) {
-          void sendMessage({ type: 'COUNT', delta: { blocked: secrets.length, ...countsFor(secrets) } });
-          setPanel({ kind: 'block', text, findings });
-          return;
-        }
-
-        const hidden = findings.filter((f) => f.policy === 'mask');
-        if (hidden.length === 0) {
+        const actionable = findings.filter((f) => f.policy !== 'warn');
+        if (actionable.length === 0) {
+          // Nothing to hide (health details alone are kept): send as typed, stay invisible.
           setPanel(null);
-          if (!(await guard.sendNow(box))) setPanel({ kind: 'error' });
-          return;
-        }
-
-        const chatId = currentChatId(site);
-        const res = await sendMessage({
-          type: 'TOKENIZE',
-          site: site.id,
-          chatId,
-          findings: hidden.map((f) => ({ type: f.type as MaskType, value: f.value })),
-        });
-        if (!res.ok || res.tokens.length !== hidden.length) {
-          setPanel({ kind: 'error' });
-          return;
-        }
-        markChatIdUsed(chatId);
-
-        const replacements: EditorReplacement[] = hidden.map((f, i) => ({
-          start: f.start,
-          end: f.end,
-          expected: f.value,
-          text: res.tokens[i]!,
-        }));
-        const preview: Extract<Panel, { kind: 'preview' }> = {
-          kind: 'preview',
-          original: text,
-          masked: replaceSpans(text, replacements) + promptNote(),
-          replacements,
-          hidden,
-        };
-
-        if (settings.quickMode) {
-          setPanel(null);
-          if (await sendMasked(box, preview)) {
-            setChip(hidden.length);
-          } else {
+          if (!(await guard.sendNow(box))) {
             setPanel({ kind: 'error' });
+            return;
           }
+          void sendMessage({ type: 'COUNT', delta: { checked: 1 } });
           return;
         }
-        setPanel(preview);
+
+        // Placeholders the send would use, without saving anything yet.
+        const maskIdx = findings.map((f, i) => (isMaskType(f.type) ? i : -1)).filter((i) => i >= 0);
+        const tokens: (string | null)[] = findings.map((f) =>
+          isSecretType(f.type) ? removedPlaceholder(f.type, f.kind) : null,
+        );
+        if (maskIdx.length > 0) {
+          const res = await sendMessage({
+            type: 'PREVIEW',
+            site: site.id,
+            chatId: currentChatId(site),
+            findings: maskIdx.map((i) => ({ type: findings[i]!.type as MaskType, value: findings[i]!.value })),
+          });
+          if (!res.ok || res.tokens.length !== maskIdx.length) {
+            setPanel({ kind: 'error' });
+            return;
+          }
+          maskIdx.forEach((i, n) => (tokens[i] = res.tokens[n]!));
+        }
+        const review: ReviewState = { kind: 'review', text, findings, risk: assessRisk(findings), tokens, keep: new Set() };
+
+        const hasSecret = findings.some((f) => f.policy === 'block');
+        if (settings.quickMode && !hasSecret) {
+          setPanel(null);
+          if (await sendProtectedNow(box, review)) setChip(maskIdx.length);
+          else setPanel({ kind: 'error' });
+          return;
+        }
+        setPanel(review);
       } catch {
         setPanel({ kind: 'error' });
       } finally {
         busy.current = false;
       }
     },
-    [guard, loadSettings, sendMasked, settingsRef, site],
+    [guard, loadSettings, sendProtectedNow, settingsRef, site],
   );
 
-  // Every stopped send comes here; MIRAGE being off lets sends straight through.
+  // Every stopped send comes here; MIRAGE being off (here) lets sends straight through, and so
+  // does a prompt with nothing to hide (checked synchronously, in a few milliseconds).
   useEffect(() => {
     guard.setPassThrough(() => settingsRef.current?.enabled === false);
+    guard.setIsClean((box) => {
+      const settings = settingsRef.current;
+      if (!settings || busy.current || panel) return false;
+      const clean = detect(readPrompt(box).text, settings).every((f) => f.policy === 'warn');
+      if (clean) void sendMessage({ type: 'COUNT', delta: { checked: 1 } });
+      return clean;
+    });
     guard.setHandler((box) => void handleSend(box));
-    return () => guard.setHandler(null);
-  }, [guard, handleSend, settingsRef]);
+    return () => {
+      guard.setHandler(null);
+      guard.setIsClean(null);
+    };
+  }, [guard, handleSend, settingsRef, panel]);
 
   useEffect(() => {
     if (chip === null) return;
@@ -179,46 +228,49 @@ export function useSendFlow(
     [currentBox],
   );
 
-  const sendProtected = useCallback(() => {
-    if (panel?.kind !== 'preview') return;
-    const preview = panel;
+  /** Protect & send: hide what is marked Hide, remove secrets, send. */
+  const protect = useCallback(() => {
+    if (panel?.kind !== 'review') return;
+    const review = panel;
     void run(async (box) => {
-      // The user may have edited the prompt while the preview was open: check it again.
-      if (readPrompt(box).text !== preview.original) {
+      // The user may have edited the prompt while the panel was open: check it again.
+      if (readPrompt(box).text !== review.text) {
         busy.current = false;
         await handleSend(box);
         return;
       }
       setPanel(null);
-      if (!(await sendMasked(box, preview))) setPanel({ kind: 'error' });
+      if (!(await sendProtectedNow(box, review))) setPanel({ kind: 'error' });
     });
-  }, [handleSend, panel, run, sendMasked]);
+  }, [handleSend, panel, run, sendProtectedNow]);
 
-  const removeSecrets = useCallback(() => {
-    if (panel?.kind !== 'block') return;
-    const block = panel;
-    void run(async (box) => {
-      const secrets = block.findings.filter((f) => f.policy === 'block');
-      const replacements = secrets.map((f) => ({ start: f.start, end: f.end, expected: f.value, text: SECRET_REMOVED }));
-      const ok = await replaceInEditor(box, replacements, replaceSpans(block.text, replacements));
-      if (!ok) {
-        setPanel({ kind: 'error' });
-        return;
-      }
-      busy.current = false;
-      setPanel(null);
-      await handleSend(box); // continues to the preview, or sends if nothing else was found
-    });
-  }, [handleSend, panel, run]);
+  /** Review: flip one item between Hide/Remove and Keep. Secrets stay removed while Block secrets is on. */
+  const toggleKeep = useCallback(
+    (index: number) => {
+      if (panel?.kind !== 'review') return;
+      const f = panel.findings[index];
+      if (!f || f.policy === 'warn') return;
+      if (f.policy === 'block' && settingsRef.current?.blockSecrets !== false) return;
+      const keep = new Set(panel.keep);
+      if (keep.has(index)) keep.delete(index);
+      else keep.add(index);
+      setPanel({ ...panel, keep });
+    },
+    [panel, settingsRef],
+  );
 
   const close = useCallback(() => {
     setPanel(null);
     currentBox()?.focus();
   }, [currentBox]);
 
+  /** Send anyway: a confirm first; for a secret a stronger one, and never while Block secrets is on. */
   const askSendRaw = useCallback(() => {
-    if (panel && panel.kind !== 'confirmRaw' && panel.kind !== 'block') setPanel({ kind: 'confirmRaw', back: panel });
-  }, [panel]);
+    if (panel?.kind !== 'review') return;
+    const hasSecret = panel.findings.some((f) => f.policy === 'block');
+    if (hasSecret && settingsRef.current?.blockSecrets !== false) return;
+    setPanel(hasSecret ? { kind: 'confirmSecret', back: panel } : { kind: 'confirmRaw', back: panel });
+  }, [panel, settingsRef]);
 
   const confirmSendRaw = useCallback(() => {
     void run(async (box) => {
@@ -227,7 +279,7 @@ export function useSendFlow(
         setPanel({ kind: 'error' });
         return;
       }
-      void sendMessage({ type: 'COUNT', delta: { allowOnce: 1 } });
+      void sendMessage({ type: 'COUNT', delta: { checked: 1, allowOnce: 1 } });
     });
   }, [guard, run]);
 
@@ -238,8 +290,8 @@ export function useSendFlow(
   }, [currentBox, handleSend]);
 
   const back = useCallback(() => {
-    if (panel?.kind === 'confirmRaw') setPanel(panel.back);
+    if (panel?.kind === 'confirmRaw' || panel?.kind === 'confirmSecret') setPanel(panel.back);
   }, [panel]);
 
-  return { panel, chip, sendProtected, removeSecrets, close, askSendRaw, confirmSendRaw, retry, back };
+  return { panel, chip, protect, toggleKeep, close, askSendRaw, confirmSendRaw, retry, back };
 }

@@ -23,7 +23,7 @@ describe('settings', () => {
     expect(settingsWithDefaults({ enabled: false, quickMode: 'yes', sites: { gemini: false } })).toEqual({
       ...DEFAULT_SETTINGS,
       enabled: false,
-      sites: { chatgpt: true, gemini: false },
+      sites: { ...DEFAULT_SETTINGS.sites, gemini: false },
     });
     expect(settingsWithDefaults(null)).toEqual(DEFAULT_SETTINGS);
   });
@@ -59,12 +59,30 @@ describe('stats', () => {
   it('adds counts, including by type', () => {
     const total = addCounts(emptyCounts(), { hidden: 2, byType: { PAN: 1, PHONE: 1 } });
     expect(addCounts(total, { hidden: 1, blocked: 1, byType: { PAN: 1, SECRET: 1 } })).toEqual({
+      ...emptyCounts(),
       hidden: 3,
       blocked: 1,
-      restoreFailures: 0,
-      allowOnce: 0,
       byType: { PAN: 2, PHONE: 1, SECRET: 1 },
     });
+  });
+
+  it('keeps a today bucket that resets at midnight', async () => {
+    const morning = new Date(2026, 8, 29, 9).getTime();
+    await recordCounts({ checked: 3, protectedSends: 2 }, morning);
+    expect((await loadStats(morning + 60_000)).today.checked).toBe(3);
+    const tomorrow = new Date(2026, 8, 30, 9).getTime();
+    const stats = await loadStats(tomorrow);
+    expect(stats.today.checked).toBe(0);
+    expect(stats.lifetime.checked).toBe(3);
+  });
+
+  it('defaults to blocking secrets, every category on and every site on', () => {
+    const s = settingsWithDefaults({ categories: { location: false }, revealMode: 'weird' });
+    expect(s.blockSecrets).toBe(true);
+    expect(s.categories.location).toBe(false);
+    expect(s.categories.apiKeys).toBe(true);
+    expect(s.revealMode).toBe('inline');
+    expect(Object.values(s.sites).every(Boolean)).toBe(true);
   });
 
   it('resets the week but keeps lifetime counts when a new week starts', async () => {

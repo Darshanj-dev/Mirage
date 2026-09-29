@@ -13,6 +13,7 @@ describe('PASSWORD rule', () => {
       ['pwd=letmein99 then login', 'letmein99'],
       ['wifi pass: Chai&Biscuit7', 'Chai&Biscuit7'],
       ['wifi pass: Chai&Biscuit7. Write steps for my parents.', 'Chai&Biscuit7'],
+      ['ssh in with password S3rv3r#Pass please', 'S3rv3r#Pass'],
     ],
     [
       'I forgot my password, how do I reset it?',
@@ -22,6 +23,8 @@ describe('PASSWORD rule', () => {
       'bypass: true',
       'password = process.env.DB_PASSWORD',
       'pass the salt',
+      'which password Manager2 app is best', // no symbol: not strong enough without ':' or 'is'
+      'password reset link expired yesterday',
     ],
   );
 });

@@ -1,83 +1,15 @@
-// The popup (S7): one screen, no menus. Most people only ever use the on/off switch.
+// The popup (S7): a status dashboard. On/off, today's anonymous counts, which platforms are
+// protected, and a link to settings. It never shows a prompt or a value.
 
-import { useState, type FormEvent } from 'react';
-import { t, tCount } from '@/lib/strings';
+import { browser } from 'wxt/browser';
+import { SITES } from '@/lib/sites';
+import { SITE_IDS } from '@/lib/sites/hosts';
+import { t } from '@/lib/strings';
+import { SHIELD_PATH, Switch } from './Controls';
 import { usePopupState } from './usePopupState';
-
-const REPO_URL = 'https://github.com/NinadPandith/Mirage';
-
-function Switch({ checked, label, onChange }: { checked: boolean; label: string; onChange(next: boolean): void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      className={`switch ${checked ? 'switch--on' : ''}`}
-      onClick={() => onChange(!checked)}
-    >
-      <span className="switch__thumb" />
-    </button>
-  );
-}
-
-function ChipList({
-  title,
-  hint,
-  items,
-  onAdd,
-  onRemove,
-}: {
-  title: string;
-  hint: string;
-  items: readonly string[];
-  onAdd(value: string): Promise<void>;
-  onRemove(value: string): Promise<void>;
-}) {
-  const [draft, setDraft] = useState('');
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!draft.trim()) return;
-    await onAdd(draft);
-    setDraft('');
-  };
-  return (
-    <section className="section">
-      <h2 className="section__title">{title}</h2>
-      <p className="section__hint">{hint}</p>
-      {items.length > 0 && (
-        <ul className="chips">
-          {items.map((item) => (
-            <li key={item} className="chip">
-              <span>{item}</span>
-              <button type="button" className="chip__remove" aria-label={t('popup_remove', [item])} onClick={() => void onRemove(item)}>
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <form className="add" onSubmit={(e) => void submit(e)}>
-        <input
-          className="add__input"
-          value={draft}
-          maxLength={60}
-          placeholder={t('popup_addPlaceholder')}
-          aria-label={`${title}: ${t('popup_addPlaceholder')}`}
-          onChange={(e) => setDraft(e.target.value)}
-        />
-        <button type="submit" className="btn">
-          {t('popup_add')}
-        </button>
-      </form>
-    </section>
-  );
-}
 
 export function PopupView() {
   const popup = usePopupState();
-  const [confirmClear, setConfirmClear] = useState(false);
-  const [cleared, setCleared] = useState<number | null>(null);
   const { state } = popup;
 
   if (popup.error) {
@@ -92,19 +24,24 @@ export function PopupView() {
   }
   if (!state) return <main className="popup" aria-busy="true" />;
 
-  const { settings, stats, site, host } = state;
+  const { settings, stats, site } = state;
+  const siteOn = site ? settings.sites[site.id] : false;
   const status = !settings.enabled
     ? t('popup_paused')
-    : site?.ready && host
-      ? t('popup_status', [host])
-      : t('popup_unsupported');
+    : site
+      ? siteOn
+        ? t('popup_status', [site.name])
+        : t('popup_siteOff', [site.name])
+      : t('popup_active');
+  const on = settings.enabled && (!site || siteOn);
+  const today = stats?.today;
 
   return (
     <main className="popup">
       <header className="header">
         <div className="brand">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-            <path d="M12 2.5 4 5.5v6c0 5 3.4 8.9 8 10 4.6-1.1 8-5 8-10v-6l-8-3Z" />
+            <path d={SHIELD_PATH} />
           </svg>
           <span>MIRAGE</span>
         </div>
@@ -115,72 +52,65 @@ export function PopupView() {
         />
       </header>
 
-      <p className={`status ${settings.enabled && site?.ready ? 'status--on' : ''}`}>{status}</p>
-      {stats && <p className="week">{t('popup_week', [stats.week.hidden, stats.week.blocked])}</p>}
+      <p className={`status ${on ? 'status--on' : ''}`}>
+        <span className="status__dot" aria-hidden="true" />
+        {status}
+      </p>
 
-      <section className="section section--row">
-        <div>
-          <h2 className="section__title">{t('popup_quickMode')}</h2>
-          <p className="section__hint">{t('popup_quickModeHint')}</p>
+      {site && settings.enabled && (
+        <div className="row row--compact">
+          <p className="row__title">{t('popup_thisSite', [site.name])}</p>
+          <Switch
+            checked={siteOn}
+            label={t('popup_thisSite', [site.name])}
+            onChange={(v) => void popup.save({ sites: { ...settings.sites, [site.id]: v } })}
+          />
         </div>
-        <Switch checked={settings.quickMode} label={t('popup_quickMode')} onChange={(on) => void popup.setQuickMode(on)} />
+      )}
+
+      {today && (
+        <section className="stats" aria-label={t('popup_today')}>
+          <p className="label">{t('popup_today')}</p>
+          <dl className="stats__grid">
+            <div><dt>{t('popup_statChecked')}</dt><dd>{today.checked}</dd></div>
+            <div><dt>{t('popup_statHidden')}</dt><dd>{today.hidden}</dd></div>
+            <div className={today.blocked ? 'is-critical' : ''}><dt>{t('popup_statBlocked')}</dt><dd>{today.blocked}</dd></div>
+            <div className={today.replyWarnings ? 'is-high' : ''}><dt>{t('popup_statReplies')}</dt><dd>{today.replyWarnings}</dd></div>
+          </dl>
+          {stats && <p className="week">{t('popup_week', [stats.week.hidden, stats.week.blocked])}</p>}
+        </section>
+      )}
+
+      <section>
+        <p className="label">{t('popup_platforms')}</p>
+        <ul className="platforms">
+          {SITE_IDS.map((id) => {
+            const s = SITES[id];
+            const active = settings.enabled && settings.sites[id];
+            return (
+              <li key={id} className={active ? 'is-on' : ''}>
+                <span className="platforms__dot" aria-hidden="true" />
+                {s.name}
+                {!s.verifiedOn && (
+                  <span className="beta" title={t('popup_betaHint')}>
+                    {t('popup_beta')}
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       </section>
 
-      <ChipList
-        title={t('popup_safeWords')}
-        hint={t('popup_safeWordsHint')}
-        items={settings.safeWords}
-        onAdd={popup.addSafeWord}
-        onRemove={popup.removeSafeWord}
-      />
-      <ChipList
-        title={t('popup_alwaysHide')}
-        hint={t('popup_alwaysHideHint')}
-        items={state.alwaysMask}
-        onAdd={popup.addAlwaysHide}
-        onRemove={popup.removeAlwaysHide}
-      />
-
-      <section className="section">
-        {confirmClear ? (
-          <div className="confirm" role="alertdialog" aria-label={t('popup_clearConfirm')}>
-            <p>{t('popup_clearConfirm')}</p>
-            <div className="confirm__actions">
-              <button type="button" className="btn" onClick={() => setConfirmClear(false)}>
-                {t('preview_cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn--primary"
-                onClick={async () => {
-                  setCleared(await popup.clearVault());
-                  setConfirmClear(false);
-                }}
-              >
-                {t('popup_clearYes')}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="btn btn--wide"
-            onClick={() => {
-              setCleared(null);
-              setConfirmClear(true);
-            }}
-          >
-            {t('popup_clear')}
-          </button>
-        )}
-        {cleared !== null && <p className="section__hint">{tCount('popup_cleared', cleared)}</p>}
-      </section>
+      <p className="local">
+        <span className="local__dot" aria-hidden="true" />
+        {t('popup_local')}
+      </p>
 
       <footer className="footer">
-        <span>{t('popup_footer')}</span>
-        <a href={REPO_URL} target="_blank" rel="noreferrer">
-          {t('popup_repo')}
-        </a>
+        <button type="button" className="btn btn--wide" onClick={() => void browser.runtime.openOptionsPage()}>
+          {t('popup_settings')}
+        </button>
       </footer>
     </main>
   );

@@ -2,10 +2,13 @@
 // red with ! (secret), grey with ! (error or page changed).
 
 import type { CSSProperties } from 'react';
+import type { RiskLevel } from '@/lib/risk';
 import type { BadgeStatus } from './usePromptWatcher';
 
 interface Props {
   status: BadgeStatus;
+  level: RiskLevel;
+  limited: boolean; // prompt box found by the fallback
   count: number;
   label: string; // tooltip text, also read by screen readers
   style: CSSProperties;
@@ -14,12 +17,13 @@ interface Props {
   onHoverChange(hovering: boolean): void;
 }
 
-export function ShieldBadge({ status, count, label, style, pulse = false, onClick, onHoverChange }: Props) {
+export function ShieldBadge({ status, level, limited, count, label, style, pulse = false, onClick, onHoverChange }: Props) {
   const mark = status === 'secret' || status === 'error' || status === 'pageChanged' ? '!' : status === 'found' ? String(count) : '';
+  const tone = status === 'found' ? ` mirage-badge--${level}` : '';
   return (
     <button
       type="button"
-      className={`mirage-badge mirage-badge--${status}${pulse ? ' mirage-badge--pulse' : ''}`}
+      className={`mirage-badge mirage-badge--${status}${tone}${limited ? ' mirage-badge--limited' : ''}${pulse ? ' mirage-badge--pulse' : ''}`}
       style={style}
       aria-label={label}
       onClick={onClick}

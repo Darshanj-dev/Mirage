@@ -3,8 +3,9 @@
 // Messages never carry the whole prompt: only findings, placeholders, settings or counts.
 
 import { browser } from 'wxt/browser';
-import type { MaskType } from './detector/types';
+import { MASK_TYPES, type MaskType } from './detector/types';
 import type { Counts, Settings, Site, Stats } from './settings';
+import { SITE_IDS } from './sites/hosts';
 
 export interface TokenizeRequest {
   type: 'TOKENIZE';
@@ -103,8 +104,7 @@ export type Response<T extends RequestType> = ({ ok: true } & ResultMap[T]) | { 
 
 // ---------------------------------------------------------------- validation (service worker side)
 
-const SITES: readonly string[] = ['chatgpt', 'gemini'];
-const MASK_TYPES: readonly string[] = ['AADHAAR', 'PAN', 'PHONE', 'EMAIL', 'UPI', 'IFSC', 'NAME', 'CUSTOM'];
+const SITES: readonly string[] = SITE_IDS;
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isString = (v: unknown): v is string => typeof v === 'string';
@@ -125,10 +125,13 @@ export function isRequest(msg: unknown): msg is Request {
         SITES.includes(msg.site) &&
         isChatId(msg.chatId) &&
         Array.isArray(msg.findings) &&
-        msg.findings.every((f) => isObject(f) && isString(f.type) && MASK_TYPES.includes(f.type) && isString(f.value))
+        msg.findings.length <= 200 &&
+        msg.findings.every(
+          (f) => isObject(f) && isString(f.type) && (MASK_TYPES as readonly string[]).includes(f.type) && isString(f.value) && f.value.length <= 500,
+        )
       );
     case 'RESTORE':
-      return isString(msg.site) && SITES.includes(msg.site) && isChatId(msg.chatId) && isStringArray(msg.tokens);
+      return isString(msg.site) && SITES.includes(msg.site) && isChatId(msg.chatId) && isStringArray(msg.tokens) && msg.tokens.length <= 500;
     case 'RENAME_CHAT':
       return isString(msg.site) && SITES.includes(msg.site) && isChatId(msg.fromChatId) && isChatId(msg.toChatId);
     case 'SET_SETTINGS':
@@ -144,6 +147,44 @@ export function isRequest(msg: unknown): msg is Request {
     case 'GET_STATS':
       return true;
     default:
+      return false;
+  }
+}
+
+// ---------------------------------------------------------------- who may send what
+
+/**
+ * Where a message came from. A content script runs inside the chatbot's page process, so it is
+ * trusted less than MIRAGE's own pages: if that process were ever compromised, it must not be
+ * able to turn protection off, clear the vault, or read another site's saved details.
+ */
+export type Sender = { kind: 'extension' } | { kind: 'page'; site: Site | null };
+
+/** Settings a chatbot page may change: only what its own UI offers. */
+const PAGE_SETTING_KEYS: readonly string[] = ['quickModeOffered', 'protectedSendCount', 'safeWords', 'enabled', 'quickMode'];
+
+export function isAllowedFrom(sender: Sender, msg: Request): boolean {
+  if (sender.kind === 'extension') return true;
+  switch (msg.type) {
+    case 'TOKENIZE':
+    case 'PREVIEW':
+    case 'RESTORE':
+    case 'RENAME_CHAT':
+      // A page may only read and write its own site's saved details.
+      return msg.site === sender.site;
+    case 'SET_SETTINGS': {
+      if (msg.alwaysMask !== undefined) return false;
+      const patch = msg.settings ?? {};
+      if (!Object.keys(patch).every((k) => PAGE_SETTING_KEYS.includes(k))) return false;
+      // The page can turn protection on (the badge's "Click to turn on"), never off.
+      return patch.enabled !== false && patch.quickMode !== false;
+    }
+    case 'GET_SETTINGS':
+    case 'ONBOARDING_DONE':
+    case 'COUNT':
+      return true;
+    case 'CLEAR_VAULT':
+    case 'GET_STATS':
       return false;
   }
 }

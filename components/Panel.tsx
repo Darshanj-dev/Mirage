@@ -1,19 +1,24 @@
-// The frame shared by the preview, block, error and confirm panels: it slides up above the
-// composer, takes keyboard focus, and closes on Esc.
+// The frame shared by the review, error and confirm panels: it slides up above the composer,
+// takes keyboard focus, and closes on Esc. The top edge carries the risk colour.
 
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react';
 
+export type PanelTone = 'safe' | 'low' | 'high' | 'critical' | 'neutral';
+
 interface Props {
-  tone: 'protect' | 'block' | 'neutral';
+  tone: PanelTone;
   anchor: DOMRect | null;
   title: string;
   onEscape(): void;
-  children: ReactNode;
+  children?: ReactNode;
+  header?: ReactNode;
   footer?: ReactNode;
   actions: ReactNode;
 }
 
-export function Panel({ tone, anchor, title, onEscape, children, footer, actions }: Props) {
+const SHIELD = 'M12 2.5 4 5.5v6c0 5 3.4 8.9 8 10 4.6-1.1 8-5 8-10v-6l-8-3Z';
+
+export function Panel({ tone, anchor, title, onEscape, children, header, footer, actions }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -26,8 +31,8 @@ export function Panel({ tone, anchor, title, onEscape, children, footer, actions
     if (e.key === 'Escape') onEscape();
   };
 
-  const width = anchor ? Math.min(anchor.width, 720) : Math.min(window.innerWidth - 32, 640);
-  const left = anchor ? anchor.left + (anchor.width - width) / 2 : (window.innerWidth - width) / 2;
+  const width = anchor ? Math.max(360, Math.min(anchor.width, 680)) : Math.min(window.innerWidth - 32, 640);
+  const left = Math.max(8, anchor ? anchor.left + (anchor.width - width) / 2 : (window.innerWidth - width) / 2);
   const bottom = anchor ? window.innerHeight - anchor.top + 12 : 96;
 
   return (
@@ -37,12 +42,18 @@ export function Panel({ tone, anchor, title, onEscape, children, footer, actions
       aria-modal="false"
       aria-label={title}
       className={`mirage-panel mirage-panel--${tone}`}
-      style={{ left, width, bottom, maxHeight: Math.max(200, window.innerHeight - bottom - 24) }}
+      style={{ left, width: Math.min(width, window.innerWidth - 16), bottom, maxHeight: Math.max(220, window.innerHeight - bottom - 24) }}
       onKeyDown={onKeyDown}
     >
-      <h2 className="mirage-panel__title">{title}</h2>
-      <div className="mirage-panel__body">{children}</div>
+      <div className="mirage-panel__head">
+        <svg className="mirage-panel__icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d={SHIELD} />
+        </svg>
+        <h2 className="mirage-panel__title">{title}</h2>
+        {header}
+      </div>
       {footer && <p className="mirage-panel__footer">{footer}</p>}
+      {children && <div className="mirage-panel__body">{children}</div>}
       <div className="mirage-panel__actions">{actions}</div>
     </div>
   );

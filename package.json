@@ -12,7 +12,9 @@
     "compile": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "e2e": "node e2e/live.mjs",
+    "eval": "vitest run lib/detector/eval.test.ts"
   },
   "dependencies": {
     "react": "^19.2.4",
@@ -23,6 +25,8 @@
     "@types/react-dom": "^19.2.3",
     "@wxt-dev/module-react": "^1.1.5",
     "fake-indexeddb": "^6.2.5",
+    "happy-dom": "^20.14.5",
+    "puppeteer-core": "^25.12.0",
     "typescript": "^5.9.3",
     "vitest": "^5.0.2",
     "web-ext": "^10.5.0",

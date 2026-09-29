@@ -7,14 +7,15 @@ import '@/components/mirage.css';
 import { clearHighlights, setRestoreHighlights } from '@/lib/page/highlights';
 import { installSendGuard } from '@/lib/page/sendGuard';
 import { siteForHost } from '@/lib/sites';
+import { ALL_MATCHES } from '@/lib/sites/hosts';
 
 export default defineContentScript({
-  matches: ['https://chatgpt.com/*', 'https://gemini.google.com/*'],
+  matches: [...ALL_MATCHES],
   runAt: 'document_start',
   cssInjectionMode: 'ui',
   async main(ctx) {
     const site = siteForHost(location.hostname);
-    if (!site?.ready) return; // Gemini: selectors come in M5
+    if (!site?.ready) return;
 
     // When MIRAGE is turned off or reloaded, Chrome cuts this copy off from the extension.
     // Remove everything it added, so the page works exactly as if MIRAGE were not installed.

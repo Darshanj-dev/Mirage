@@ -1,7 +1,17 @@
 # MIRAGE progress
 
 ## Current milestone
-M5 Complete v1
+Upgrade (2026-09-29): audit, adapters, detection v2, risk engine, reply check, UI redesign.
+See docs/audit-report.md for everything found, fixed and measured.
+
+## Done
+- Upgrade 2026-09-29: signed-out ChatGPT textarea composer (was unprotected), Claude/Copilot
+  (beta)/Perplexity adapters with fallback composer detection, edit-message guard, per-site
+  switches enforced; canonical text layer, context scoring, 10+ new rules, risk score; review
+  panel (Protect & send / Review / Edit / Send anyway), named secret placeholders, Block secrets
+  setting; reply check; popup dashboard + settings page; per-sender message permissions;
+  restore limited to conversation messages + hover mode. 744 tests, eval P 1.00 / R 0.996,
+  live E2E pass on ChatGPT, Gemini, Perplexity with zero raw values in requests.
 
 ## Done
 - M4 Protect and restore (MVP, tag v0.1, 2026-09-28): verified on real ChatGPT — preview panel,
@@ -31,6 +41,11 @@ M5 Complete v1
   Gemini detection + protected send + restore.
 
 ## Next step
+- Verify Claude and Copilot live (needs a signed-in session), then drop their beta tag.
+- Blind detector test set from outside the team.
+- Redesign the welcome page to match the new UI.
+
+## Earlier next steps (M5)
 - "Copy with details" beside replies + protected-message receipt (S6). ChatGPT selectors (from
   DevTools 2026-09-29): reply turn = section[data-testid^="conversation-turn-"] containing
   [data-message-author-role="assistant"]; its copy button = button[data-testid="copy-turn-action-button"]

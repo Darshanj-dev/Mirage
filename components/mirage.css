@@ -1,14 +1,36 @@
 /* MIRAGE page UI. Lives inside a Shadow DOM, so the chatbot's styles never reach it.
-   One blue for protected, one red for blocked, nothing else coloured. */
+   Colour means one thing only: risk. Blue = protected/low, amber = high, red = critical. */
 
 :host {
-  --mirage-blue: #2563eb;
-  --mirage-red: #dc2626;
-  --mirage-grey: #8e8e93;
-  --mirage-ink: #111827;
-  --mirage-paper: #ffffff;
+  --m-blue: #2563eb;
+  --m-amber: #d97706;
+  --m-red: #dc2626;
+  --m-green: #16a34a;
+  --m-grey: #8e8e93;
+  --m-ink: #0f172a;
+  --m-muted: #475569;
+  --m-paper: #ffffff;
+  --m-sunk: #f1f5f9;
+  --m-line: rgb(15 23 42 / 0.1);
+  --m-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --m-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
   all: initial;
 }
+
+@media (prefers-color-scheme: dark) {
+  :host {
+    --m-ink: #e5e7eb;
+    --m-muted: #9ca3af;
+    --m-paper: #17181b;
+    --m-sunk: #222428;
+    --m-line: rgb(255 255 255 / 0.1);
+    --m-blue: #60a5fa;
+    --m-amber: #fbbf24;
+    --m-red: #f87171;
+  }
+}
+
+/* ---- shield badge (S1) */
 
 .mirage-badge {
   position: fixed;
@@ -22,90 +44,63 @@
   border-radius: 50%;
   background: transparent;
   cursor: default;
-  font: 600 11px/1 system-ui, -apple-system, 'Segoe UI', sans-serif;
-  color: var(--mirage-blue);
+  font: 700 11px/1 var(--m-font);
+  color: var(--m-blue);
+  transition: color 160ms ease;
 }
-
-.mirage-badge:focus-visible {
-  outline: 2px solid var(--mirage-blue);
-  outline-offset: 1px;
-}
-
-.mirage-badge svg,
-.mirage-badge__mark {
-  grid-area: 1 / 1;
-}
-
-.mirage-badge__shield {
-  fill: none;
-  stroke: currentColor;
-}
-
-.mirage-badge__mark {
-  color: var(--mirage-paper);
-  transform: translateY(-0.5px);
-}
-
-.mirage-badge--off,
-.mirage-badge--error,
-.mirage-badge--pageChanged {
-  color: var(--mirage-grey);
-}
-
-.mirage-badge--off {
-  cursor: pointer;
-}
-
+.mirage-badge:focus-visible { outline: 2px solid var(--m-blue); outline-offset: 1px; }
+.mirage-badge svg, .mirage-badge__mark { grid-area: 1 / 1; }
+.mirage-badge__shield { fill: none; stroke: currentColor; }
+.mirage-badge__mark { color: #fff; transform: translateY(-0.5px); }
+.mirage-badge--off, .mirage-badge--siteOff, .mirage-badge--error, .mirage-badge--pageChanged { color: var(--m-grey); }
+.mirage-badge--off { cursor: pointer; }
 .mirage-badge--found .mirage-badge__shield,
 .mirage-badge--secret .mirage-badge__shield,
 .mirage-badge--error .mirage-badge__shield,
-.mirage-badge--pageChanged .mirage-badge__shield {
-  fill: currentColor;
+.mirage-badge--pageChanged .mirage-badge__shield { fill: currentColor; }
+.mirage-badge--high { color: var(--m-amber); }
+.mirage-badge--secret, .mirage-badge--critical { color: var(--m-red); }
+.mirage-badge--limited.mirage-badge--watching .mirage-badge__shield { stroke-dasharray: 3 2; }
+.mirage-badge--pulse { animation: mirage-pulse 1.2s ease-out 3; }
+@keyframes mirage-pulse {
+  0% { box-shadow: 0 0 0 0 rgb(37 99 235 / 0.5); }
+  100% { box-shadow: 0 0 0 14px rgb(37 99 235 / 0); }
 }
 
-.mirage-badge--secret {
-  color: var(--mirage-red);
-}
+/* ---- tooltips */
 
 .mirage-tooltip {
   position: fixed;
   z-index: 2147483647;
-  max-width: 280px;
+  max-width: 300px;
   padding: 8px 10px;
   border-radius: 8px;
-  background: var(--mirage-ink);
-  color: #f9fafb;
-  font: 400 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
+  background: #0f172a;
+  color: #f8fafc;
+  font: 400 13px/1.45 var(--m-font);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.28);
   pointer-events: none;
 }
-
-.mirage-tooltip--center {
-  transform: translateX(-50%);
+.mirage-tooltip--center { transform: translateX(-50%); }
+.mirage-tooltip__title { margin: 0; }
+.mirage-tooltip__list { margin: 6px 0 0; padding: 0; list-style: none; font-variant-numeric: tabular-nums; }
+.mirage-tooltip__list li { padding: 2px 0 2px 10px; border-left: 2px solid #60a5fa; margin-top: 3px; }
+.mirage-tooltip__list li.is-secret { border-left-color: #f87171; }
+.mirage-tooltip__list li.is-warn { border-left-color: #fbbf24; }
+.mirage-tooltip--interactive { pointer-events: auto; display: flex; align-items: center; gap: 10px; }
+.mirage-tooltip__action {
+  flex: none;
+  padding: 3px 10px;
+  border: 1px solid rgb(255 255 255 / 0.35);
+  border-radius: 6px;
+  background: transparent;
+  color: #fff;
+  font: 500 12.5px/1.3 var(--m-font);
+  cursor: pointer;
 }
+.mirage-tooltip__action:hover { background: rgb(255 255 255 / 0.12); }
 
-.mirage-tooltip__title {
-  margin: 0;
-}
-
-.mirage-tooltip__list {
-  margin: 6px 0 0;
-  padding: 0;
-  list-style: none;
-  font-variant-numeric: tabular-nums;
-}
-
-.mirage-tooltip__list li {
-  padding: 2px 0 2px 10px;
-  border-left: 2px solid var(--mirage-blue);
-  margin-top: 3px;
-}
-
-.mirage-tooltip__list li.is-secret {
-  border-left-color: var(--mirage-red);
-}
-
-/* ---- panels (S3 preview, S4 block, error, confirm) */
+/* ---- panels */
 
 .mirage-panel {
   position: fixed;
@@ -113,190 +108,203 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px;
-  border-radius: 16px;
-  border: 1px solid rgb(0 0 0 / 0.08);
-  border-top: 3px solid var(--mirage-grey);
-  background: var(--mirage-paper);
-  color: var(--mirage-ink);
-  font: 400 14px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif;
-  box-shadow: 0 12px 40px rgb(0 0 0 / 0.28);
-  animation: mirage-slide-up 140ms ease-out;
+  gap: 12px;
+  padding: 14px 16px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--m-line);
+  border-top: 3px solid var(--m-grey);
+  background: var(--m-paper);
+  color: var(--m-ink);
+  font: 400 14px/1.5 var(--m-font);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.26), 0 2px 6px rgb(0 0 0 / 0.08);
+  animation: mirage-in 140ms ease-out;
 }
-
-@keyframes mirage-slide-up {
-  from { opacity: 0; transform: translateY(8px); }
+@keyframes mirage-in {
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
-
-.mirage-panel--protect { border-top-color: var(--mirage-blue); }
-.mirage-panel--block { border-top-color: var(--mirage-red); }
-
-.mirage-panel__title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
+@media (prefers-reduced-motion: reduce) {
+  .mirage-panel, .mirage-alert { animation: none; }
+  .mirage-badge--pulse { animation: none; }
 }
+.mirage-panel--low, .mirage-panel--safe { border-top-color: var(--m-blue); --m-accent: var(--m-blue); }
+.mirage-panel--high { border-top-color: var(--m-amber); --m-accent: var(--m-amber); }
+.mirage-panel--critical { border-top-color: var(--m-red); --m-accent: var(--m-red); }
+.mirage-panel--neutral { --m-accent: var(--m-grey); }
 
-.mirage-panel__body {
-  overflow: auto;
-  min-height: 0;
-}
-
-.mirage-panel__body:empty { display: none; }
-
-.mirage-prompt {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgb(0 0 0 / 0.04);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.mirage-pill {
-  display: inline-block;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: rgb(37 99 235 / 0.12);
-  color: var(--mirage-blue);
-  font-weight: 600;
-}
-
-.mirage-pill--secret {
-  background: rgb(220 38 38 / 0.12);
-  color: var(--mirage-red);
-}
-
-.mirage-panel__footer {
-  margin: 0;
-  color: #4b5563;
-  font-size: 13px;
-}
-
-.mirage-panel__offer {
-  display: block;
-  margin-top: 4px;
-}
-
-.mirage-panel__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
+.mirage-panel__head { display: flex; align-items: center; gap: 10px; }
+.mirage-panel__icon { flex: none; fill: var(--m-accent, var(--m-blue)); opacity: 0.9; }
+.mirage-panel__title { margin: 0; flex: 1; font-size: 15px; font-weight: 600; letter-spacing: -0.005em; }
+.mirage-panel__footer { margin: -6px 0 0 30px; color: var(--m-muted); font-size: 13px; }
+.mirage-panel__offer { display: block; margin-top: 4px; }
+.mirage-panel__offer .mirage-link { margin-left: 6px; color: var(--m-blue); }
+.mirage-panel__body { overflow: auto; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.mirage-panel__actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 2px; }
 .mirage-spacer { flex: 1; }
 
-.mirage-btn {
-  padding: 7px 14px;
-  border-radius: 999px;
-  border: 1px solid rgb(0 0 0 / 0.15);
-  background: transparent;
-  color: inherit;
-  font: 500 14px/1.2 system-ui, -apple-system, 'Segoe UI', sans-serif;
+/* risk level chip */
+.mirage-level {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font: 600 12px/1.4 var(--m-font);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  background: color-mix(in srgb, var(--m-blue) 12%, transparent);
+  color: var(--m-blue);
+}
+.mirage-level__dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.mirage-level--high { background: color-mix(in srgb, var(--m-amber) 14%, transparent); color: var(--m-amber); }
+.mirage-level--critical { background: color-mix(in srgb, var(--m-red) 13%, transparent); color: var(--m-red); }
+.mirage-level--safe { background: color-mix(in srgb, var(--m-green) 12%, transparent); color: var(--m-green); }
+
+/* finding rows */
+.mirage-items { margin: 0; padding: 0; list-style: none; border: 1px solid var(--m-line); border-radius: 8px; }
+.mirage-item {
+  display: grid;
+  grid-template-columns: 4px 1fr auto auto;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 2px;
+  padding: 7px 10px 7px 0;
+  font-size: 13.5px;
+}
+.mirage-item + .mirage-item { border-top: 1px solid var(--m-line); }
+.mirage-item__sev { grid-row: 1 / span 2; align-self: stretch; border-radius: 0 3px 3px 0; background: var(--m-blue); }
+.mirage-item--high .mirage-item__sev { background: var(--m-amber); }
+.mirage-item--critical .mirage-item__sev { background: var(--m-red); }
+.mirage-item--medium .mirage-item__sev { background: color-mix(in srgb, var(--m-blue) 70%, var(--m-amber)); }
+.mirage-item--low .mirage-item__sev { background: color-mix(in srgb, var(--m-blue) 55%, transparent); }
+.mirage-item__name { font-weight: 500; }
+.mirage-item__to { color: var(--m-muted); font-size: 12.5px; text-align: right; }
+.mirage-item__to code, .mirage-prompt, .mirage-pill { font-family: var(--m-mono); }
+.mirage-item__to code { font-size: 12px; color: var(--m-blue); }
+.mirage-item__why { grid-column: 2 / span 3; color: var(--m-muted); font-size: 12px; }
+.mirage-item.is-kept .mirage-item__name { text-decoration: line-through; text-decoration-color: var(--m-muted); }
+.mirage-toggle {
+  grid-column: 4;
+  grid-row: 1;
+  min-width: 64px;
+  padding: 3px 8px;
+  border: 1px solid var(--m-line);
+  border-radius: 6px;
+  background: var(--m-sunk);
+  color: var(--m-ink);
+  font: 500 12px/1.3 var(--m-font);
   cursor: pointer;
 }
+.mirage-toggle[aria-pressed='false'] { background: transparent; color: var(--m-muted); }
+.mirage-toggle:disabled { opacity: 0.55; cursor: not-allowed; }
 
-.mirage-btn:hover { background: rgb(0 0 0 / 0.05); }
+.mirage-why { margin: 0; font-size: 12.5px; color: var(--m-muted); font-variant-numeric: tabular-nums; }
+.mirage-why strong { color: var(--m-ink); font-weight: 600; }
+.mirage-label { margin: 0; font: 600 11px/1 var(--m-font); letter-spacing: 0.06em; text-transform: uppercase; color: var(--m-muted); }
 
-.mirage-btn--primary {
-  border-color: var(--mirage-blue);
-  background: var(--mirage-blue);
-  color: #fff;
+.mirage-prompt {
+  margin: -4px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--m-sunk);
+  font-size: 12.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 160px;
+  overflow: auto;
 }
+.mirage-pill {
+  display: inline-block;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--m-blue) 14%, transparent);
+  color: var(--m-blue);
+  font-weight: 600;
+}
+.mirage-pill--secret { background: color-mix(in srgb, var(--m-red) 14%, transparent); color: var(--m-red); }
 
+/* buttons */
+.mirage-btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--m-line);
+  background: transparent;
+  color: inherit;
+  font: 500 13.5px/1.2 var(--m-font);
+  cursor: pointer;
+}
+.mirage-btn:hover { background: var(--m-sunk); }
+.mirage-btn--small { padding: 5px 10px; font-size: 12.5px; }
+.mirage-btn--primary { border-color: transparent; background: #2563eb; color: #fff; font-weight: 600; }
 .mirage-btn--primary:hover { background: #1d4ed8; }
-
-.mirage-btn--block {
-  border-color: var(--mirage-red);
-  background: var(--mirage-red);
-}
-
-.mirage-btn--block:hover { background: #b91c1c; }
-
-.mirage-btn:focus-visible,
-.mirage-link:focus-visible {
-  outline: 2px solid var(--mirage-blue);
-  outline-offset: 2px;
-}
-
+.mirage-btn--high { background: #b45309; }
+.mirage-btn--high:hover { background: #92400e; }
+.mirage-btn--critical { background: #dc2626; }
+.mirage-btn--critical:hover { background: #b91c1c; }
+.mirage-btn:focus-visible, .mirage-link:focus-visible, .mirage-toggle:focus-visible { outline: 2px solid var(--m-blue); outline-offset: 2px; }
 .mirage-link {
   padding: 0;
   border: none;
   background: none;
-  color: #4b5563;
-  font: 400 13px/1.2 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--m-muted);
+  font: 400 13px/1.2 var(--m-font);
   text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: pointer;
 }
 
 /* ---- Quick mode chip */
-
 .mirage-chip {
   position: fixed;
   z-index: 2147483646;
   padding: 5px 12px;
-  border-radius: 999px;
-  background: var(--mirage-blue);
+  border-radius: 8px;
+  background: #2563eb;
   color: #fff;
-  font: 500 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font: 500 13px/1.4 var(--m-font);
   box-shadow: 0 4px 12px rgb(0 0 0 / 0.2);
 }
 
-@media (prefers-color-scheme: dark) {
-  .mirage-panel {
-    --mirage-paper: #1f2023;
-    --mirage-ink: #f3f4f6;
-    border-color: rgb(255 255 255 / 0.1);
-  }
-  .mirage-prompt { background: rgb(255 255 255 / 0.06); }
-  .mirage-pill { background: rgb(96 165 250 / 0.18); color: #93c5fd; }
-  .mirage-pill--secret { background: rgb(248 113 113 / 0.18); color: #fca5a5; }
-  .mirage-panel__footer, .mirage-link { color: #9ca3af; }
-  .mirage-btn { border-color: rgb(255 255 255 / 0.2); }
-  .mirage-btn:hover { background: rgb(255 255 255 / 0.08); }
-}
-
-/* ---- interactive tooltip ("Not personal") */
-
-.mirage-tooltip--interactive {
-  pointer-events: auto;
+/* ---- reply check notice */
+.mirage-alert {
+  position: fixed;
+  z-index: 2147483646;
+  box-sizing: border-box;
+  max-width: 420px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--m-line);
+  border-left: 3px solid var(--m-amber);
+  background: var(--m-paper);
+  color: var(--m-ink);
+  font: 400 13px/1.45 var(--m-font);
+  box-shadow: 0 10px 32px rgb(0 0 0 / 0.22);
+  animation: mirage-in 140ms ease-out;
 }
+.mirage-alert svg { flex: none; fill: var(--m-amber); }
+.mirage-alert__text { flex: 1; }
+.mirage-alert__text p { margin: 0; }
+.mirage-alert__note { color: var(--m-muted); font-size: 12px; }
 
-.mirage-tooltip__action {
-  flex: none;
-  padding: 3px 10px;
-  border: 1px solid rgb(255 255 255 / 0.35);
-  border-radius: 999px;
-  background: transparent;
-  color: #fff;
-  font: 500 12.5px/1.3 system-ui, -apple-system, 'Segoe UI', sans-serif;
-  cursor: pointer;
+/* compact summary of what was found (the full list is under Review) */
+.mirage-chips { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.mirage-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 6px;
+  border: 1px solid var(--m-line);
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
 }
-
-.mirage-tooltip__action:hover {
-  background: rgb(255 255 255 / 0.12);
-}
-
-/* ---- first-run pulse on the badge */
-
-.mirage-badge--pulse {
-  animation: mirage-pulse 1.2s ease-out 3;
-}
-
-@keyframes mirage-pulse {
-  0% { box-shadow: 0 0 0 0 rgb(37 99 235 / 0.55); }
-  100% { box-shadow: 0 0 0 14px rgb(37 99 235 / 0); }
-}
-
-/* ---- Quick mode offer link inside the preview footer */
-
-.mirage-panel__offer .mirage-link {
-  margin-left: 6px;
-  color: var(--mirage-blue);
-}
+.mirage-tag::before { content: ''; width: 3px; height: 12px; border-radius: 2px; background: var(--m-blue); }
+.mirage-tag--high::before { background: var(--m-amber); }
+.mirage-tag--critical::before { background: var(--m-red); }
+.mirage-tag.is-kept { text-decoration: line-through; color: var(--m-muted); }
+.mirage-note { font-size: 12px; color: var(--m-muted); }

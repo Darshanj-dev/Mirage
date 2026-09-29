@@ -4,34 +4,42 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { detect } from '@/lib/detector/detect';
-import { isSecretType, type DetectSettings, type Finding, type MaskType } from '@/lib/detector/types';
+import { isMaskType, type DetectSettings, type Finding, type MaskType } from '@/lib/detector/types';
 import { sendMessage } from '@/lib/messages';
 import { currentChatId, resolveChatId } from '@/lib/page/chatId';
 import { clearHighlights, setHighlights } from '@/lib/page/highlights';
 import { readPrompt } from '@/lib/page/promptText';
-import { findComposer, findPromptBox, type SiteConfig } from '@/lib/sites';
+import { assessRisk, type Risk } from '@/lib/risk';
+import type { RevealMode } from '@/lib/settings';
+import { findComposer, locatePromptBox, type SiteConfig } from '@/lib/sites';
 import { useRangeHover } from './useRangeHover';
 
-export type BadgeStatus = 'off' | 'watching' | 'found' | 'secret' | 'error' | 'pageChanged';
+export type BadgeStatus = 'off' | 'siteOff' | 'watching' | 'found' | 'secret' | 'error' | 'pageChanged';
 
 export interface ScanResult {
   findings: Finding[];
   ranges: (Range | null)[];
-  tokens: (string | null)[]; // placeholder per finding; null for secrets or while loading
+  tokens: (string | null)[]; // placeholder per finding; null for secrets, warnings or while loading
+  risk: Risk;
 }
 
 export interface PageSettings extends DetectSettings {
-  enabled: boolean;
+  enabled: boolean; // MIRAGE on, and on for this site
+  globalEnabled: boolean;
+  siteEnabled: boolean;
   quickMode: boolean;
   protectedSendCount: number;
   quickModeOffered: boolean;
   firstRun: boolean;
+  blockSecrets: boolean;
+  revealMode: RevealMode;
+  checkReplies: boolean;
 }
 
 const SCAN_DELAY_MS = 300;
 const POLL_MS = 500;
 const MISSING_AFTER_MS = 8000;
-const EMPTY_SCAN: ScanResult = { findings: [], ranges: [], tokens: [] };
+const EMPTY_SCAN: ScanResult = { findings: [], ranges: [], tokens: [], risk: assessRisk([]) };
 
 const sameRect = (a: DOMRect | null, b: DOMRect | null): boolean =>
   a === b || (!!a && !!b && a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height);
@@ -40,6 +48,7 @@ export function usePromptWatcher(site: SiteConfig) {
   const [settings, setSettings] = useState<PageSettings | null>(null);
   const [settingsError, setSettingsError] = useState(false);
   const [box, setBox] = useState<HTMLElement | null>(null);
+  const [limited, setLimited] = useState(false); // found by the fallback, not the site's selectors
   const [missing, setMissing] = useState(false);
   const [scan, setScan] = useState<ScanResult>(EMPTY_SCAN);
   const [detectError, setDetectError] = useState(false);
@@ -58,20 +67,27 @@ export function usePromptWatcher(site: SiteConfig) {
       setSettingsError(true);
       return null;
     }
+    const siteEnabled = res.settings.sites[site.id] !== false;
     const next: PageSettings = {
-      enabled: res.settings.enabled,
+      enabled: res.settings.enabled && siteEnabled,
+      globalEnabled: res.settings.enabled,
+      siteEnabled,
       quickMode: res.settings.quickMode,
       protectedSendCount: res.settings.protectedSendCount,
       quickModeOffered: res.settings.quickModeOffered,
       firstRun: res.firstRun,
       safeWords: res.settings.safeWords,
       alwaysMask: res.alwaysMask,
+      categories: res.settings.categories,
+      blockSecrets: res.settings.blockSecrets,
+      revealMode: res.settings.revealMode,
+      checkReplies: res.settings.checkReplies,
     };
     settingsRef.current = next;
     setSettings(next);
     setSettingsError(false);
     return next;
-  }, []);
+  }, [site]);
 
   useEffect(() => {
     void loadSettings();
@@ -100,9 +116,11 @@ export function usePromptWatcher(site: SiteConfig) {
     const poll = () => {
       // A new chat's values were saved under a temporary id: move them as soon as the URL has a real one.
       void resolveChatId(site);
-      const found = findPromptBox(site);
+      const match = locatePromptBox(site);
+      const found = match?.box ?? null;
       if (found) lastSeen = Date.now();
       if (found !== boxRef.current) setBox(found);
+      setLimited(!!match?.fallback);
       setMissing(!found && Date.now() - lastSeen > MISSING_AFTER_MS);
       updateAnchor();
     };
@@ -134,15 +152,16 @@ export function usePromptWatcher(site: SiteConfig) {
       setHighlights(
         ranges.filter((r, i): r is Range => !!r && findings[i]!.policy === 'mask'),
         ranges.filter((r, i): r is Range => !!r && findings[i]!.policy === 'block'),
+        ranges.filter((r, i): r is Range => !!r && findings[i]!.policy === 'warn'),
       );
       setDetectError(false);
-      setScan({ findings, ranges, tokens: findings.map(() => null) });
+      setScan({ findings, ranges, tokens: findings.map(() => null), risk: assessRisk(findings) });
       updateAnchor();
 
       const masked: { index: number; type: MaskType; value: string }[] = [];
       findings.forEach((f, index) => {
         const type = f.type;
-        if (!isSecretType(type)) masked.push({ index, type, value: f.value });
+        if (isMaskType(type)) masked.push({ index, type, value: f.value });
       });
       if (masked.length === 0) return;
 
@@ -186,11 +205,13 @@ export function usePromptWatcher(site: SiteConfig) {
 
   // ---- status for the badge
   let status: BadgeStatus;
+  const actionable = scan.findings.filter((f) => f.policy !== 'warn');
   if (settingsError || detectError) status = 'error';
+  else if (settings && !settings.globalEnabled) status = 'off';
+  else if (settings && !settings.siteEnabled) status = 'siteOff';
   else if (missing) status = 'pageChanged';
-  else if (settings && !settings.enabled) status = 'off';
-  else if (scan.findings.some((f) => f.policy === 'block')) status = 'secret';
-  else if (scan.findings.length > 0) status = 'found';
+  else if (actionable.some((f) => f.policy === 'block')) status = 'secret';
+  else if (actionable.length > 0) status = 'found';
   else status = 'watching';
 
   const turnOn = useCallback(async () => {
@@ -208,5 +229,5 @@ export function usePromptWatcher(site: SiteConfig) {
     [loadSettings],
   );
 
-  return { status, scan, anchor, hover, settings, settingsRef, loadSettings, turnOn, markSafe, retry: scanNow };
+  return { status, limited, scan, anchor, hover, settings, settingsRef, loadSettings, turnOn, markSafe, retry: scanNow };
 }
