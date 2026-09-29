@@ -458,11 +458,15 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
         let original = d.original
         let keep = Array(d.keep)
         gateQueue.async { [weak self] in
+            let t0 = CFAbsoluteTimeGetCurrent()
+            var phases: [String] = [] // timings only, never text
+            func mark(_ name: String) { phases.append(String(format: "%@=%.0f", name, (CFAbsoluteTimeGetCurrent() - t0) * 1000)) }
             let outcome: ProtectOutcome = {
                 Thread.sleep(forTimeInterval: 0.15)
                 guard let current = adapter.readInput(input) else {
                     return .failed("MIRAGE couldn't read the message box. Your original message has not been submitted.")
                 }
+                mark("read")
                 if normalizedPromptText(current) != normalizedPromptText(original) { return .edited(current) }
                 guard let protected = try? core.protect(original, settings: settings.detection, keep: keep) else {
                     return .failed("Protection could not be verified. Your original message has not been submitted.")
@@ -474,9 +478,11 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
                         ? "Protection could not be verified. Your original message has not been submitted."
                         : "Protection could not be verified. Your message has not been submitted — check the message box before sending.")
                 }
+                mark("replaced")
                 guard adapter.submit(app: d.appElement, input: input) else {
                     return .failed("Your message was protected but MIRAGE couldn't send it. It is still in the box, protected.")
                 }
+                mark("submitted")
                 // Sent means the app took the text out of the box. Until then, MIRAGE claims nothing.
                 let expected = normalizedPromptText(protected.text)
                 for _ in 0..<30 {
@@ -485,8 +491,12 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
                 }
                 return .notConfirmed(protected)
             }()
+            mark("done")
             DispatchQueue.main.async {
-                MainActor.assumeIsolated { self?.finishProtect(outcome, decision: d, core: core) }
+                MainActor.assumeIsolated {
+                    self?.trace("protect-ms " + phases.joined(separator: " "))
+                    self?.finishProtect(outcome, decision: d, core: core)
+                }
             }
         }
     }
@@ -571,7 +581,7 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
             }
         }
         earlyTimer = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: work)
     }
 
     /// Opens the review for what is in the prompt box now (the badge's click).
