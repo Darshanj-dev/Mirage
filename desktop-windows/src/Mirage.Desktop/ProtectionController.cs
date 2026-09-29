@@ -44,7 +44,7 @@ internal sealed class ProtectionController : IDisposable
     private AutomationFocusChangedEventHandler? _focusHandler;
     // Review while typing: the prompt box is read a few times a second while ChatGPT or Claude is
     // in front (that box only; nothing else, and nothing is kept after it is analysed).
-    private readonly System.Windows.Forms.Timer _poll = new() { Interval = 200 };
+    private readonly System.Windows.Forms.Timer _poll = new() { Interval = 120 }; // a pause of 0.12-0.24 s opens the review (same as macOS)
     private volatile bool _polling;
     private string? _pollText;
     private Analysis? _pollAnalysis;
@@ -248,7 +248,7 @@ internal sealed class ProtectionController : IDisposable
         if (_polling || _front is not { } front || Core is not { } core || !Settings.ReviewWhileTyping) return;
         if (Current is { Early: false }) return; // a held send is being decided
         if (Current == null && _gate.DecisionOpen) return; // a held send is being checked
-        if (_lastInput is not { } input) return;
+        var known = _lastInput;
         _polling = true;
         var settings = Settings;
         var previous = _pollText;
@@ -256,13 +256,17 @@ internal sealed class ProtectionController : IDisposable
         {
             string? text = null;
             Analysis? analysis = null;
+            AutomationElement? input = known;
             try
             {
+                // Focus may have been in the box since before MIRAGE started (no focus event yet).
+                if (input == null && Uia.Focused() is { } f && Uia.ProcessId(f) == front.App.Pid && front.Adapter.IsInput(f)) input = f;
+                if (input == null) { _ui.Post(_ => _polling = false, null); return; }
                 text = front.Adapter.Read(input);
                 if (text != null && text != previous) analysis = core.Analyze(text, settings.Detection, settings.Policy);
             }
             catch { text = null; }
-            _ui.Post(_ => { _polling = false; Polled(front, input, text, analysis); }, null);
+            _ui.Post(_ => { _polling = false; _lastInput ??= input; Polled(front, input, text, analysis); }, null);
         });
     }
 
