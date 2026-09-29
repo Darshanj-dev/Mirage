@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MIRAGE Demo Script</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 16mm 15mm; }
+  :root { --ink:#0f172a; --muted:#475569; --line:#e2e8f0; --sunk:#f8fafc; --blue:#2563eb; --red:#dc2626; --amber:#b45309; --green:#15803d; }
+  * { box-sizing: border-box; }
+  body { font: 10.3pt/1.45 -apple-system, "Helvetica Neue", Arial, sans-serif; color: var(--ink); margin: 0; }
+  h1 { font-size: 26pt; margin: 0 0 4px; letter-spacing: -0.02em; }
+  h2 { font-size: 15pt; margin: 22px 0 6px; padding-bottom: 4px; border-bottom: 2px solid var(--ink); break-after: avoid; }
+  h3 { font-size: 11.5pt; margin: 14px 0 4px; break-after: avoid; }
+  p { margin: 4px 0; }
+  .sub { color: var(--muted); font-size: 11pt; }
+  .cover { border: 2px solid var(--ink); border-radius: 10px; padding: 18px 20px; margin-bottom: 12px; }
+  .meta { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; font-size: 9.5pt; color: var(--muted); }
+  .meta b { color: var(--ink); }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 9.4pt; }
+  th, td { border: 1px solid var(--line); padding: 5px 7px; vertical-align: top; text-align: left; }
+  th { background: var(--sunk); font-size: 8.6pt; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  tr { break-inside: avoid; }
+  td.t { white-space: nowrap; font-weight: 700; width: 46px; }
+  .say { font-style: italic; }
+  code, .type { font: 8.9pt/1.4 "SF Mono", Menlo, Consolas, monospace; }
+  .type { display: block; background: #0f172a; color: #f8fafc; border-radius: 6px; padding: 6px 8px; margin: 3px 0; white-space: pre-wrap; word-break: break-word; }
+  .out { display: block; background: var(--sunk); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; margin: 3px 0; white-space: pre-wrap; font: 8.6pt/1.4 "SF Mono", Menlo, monospace; }
+  .ph { color: var(--blue); font-weight: 700; }
+  .rm { color: var(--red); font-weight: 700; }
+  .tag { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 8.4pt; font-weight: 700; }
+  .crit { background: #fee2e2; color: var(--red); } .high { background: #fef3c7; color: var(--amber); } .safe { background: #dcfce7; color: var(--green); } .low { background: #dbeafe; color: var(--blue); }
+  .box { border-left: 4px solid var(--blue); background: var(--sunk); padding: 7px 10px; margin: 8px 0; border-radius: 0 6px 6px 0; break-inside: avoid; }
+  .warn { border-left-color: var(--red); }
+  .ok { border-left-color: var(--green); }
+  ul, ol { margin: 4px 0; padding-left: 18px; } li { margin: 2px 0; }
+  .check li { list-style: "☐  "; }
+  .page { break-before: page; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .step { border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; margin: 6px 0; break-inside: avoid; }
+  .step h3 { margin-top: 0; }
+  .lbl { font-size: 8pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-top: 5px; }
+  .foot { color: var(--muted); font-size: 8.5pt; margin-top: 18px; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>MIRAGE · Demo Script</h1>
+  <p class="sub">A privacy firewall for AI: personal details become placeholders and secrets never leave the device, before the prompt is sent.</p>
+  <div class="meta">
+    <span><b>Team</b> Nexora</span>
+    <span><b>Date</b> 30 September 2026</span>
+    <span><b>Length</b> about 10 minutes + Q&amp;A</span>
+    <span><b>Parts</b> Browser extension · Desktop companion · CLI</span>
+  </div>
+</div>
+
+<div class="box warn"><b>All data in this script is made up.</b> Never type real details on stage. Every input below was run through MIRAGE's detector on 29 Sep 2026, and the scores and outputs shown are what it produced.</div>
+
+<h2>Running order</h2>
+<table>
+  <tr><th>Time</th><th>Part</th><th>Who</th><th>What the audience sees</th></tr>
+  <tr><td class="t">0:00</td><td>Opening</td><td>Presenter</td><td>The problem: people paste PAN, Aadhaar and API keys into AI chats.</td></tr>
+  <tr><td class="t">0:45</td><td>A · Browser extension</td><td>Darshan</td><td>ChatGPT website: clean prompt passes, personal data gets hidden, secrets get blocked, Private Compose.</td></tr>
+  <tr><td class="t">4:00</td><td>B · Desktop companion</td><td>Darshan</td><td>ChatGPT Mac app: "MIRAGE active" badge, the review opens as you type, Protect &amp; Send, secret removed.</td></tr>
+  <tr><td class="t">7:00</td><td>C · CLI</td><td>Ninad</td><td>Terminal: stop a secret in a log, hide details, put them back in the AI's reply, chat with Claude.</td></tr>
+  <tr><td class="t">9:15</td><td>Closing</td><td>Presenter</td><td>One engine, three products, all on the device. Then Q&amp;A.</td></tr>
+</table>
+
+<h2>Before you present (15 minutes earlier)</h2>
+<div class="two">
+<div>
+<h3>Browser (Chrome)</h3>
+<ul class="check">
+  <li>MIRAGE extension loaded and pinned (shield in the toolbar shows <i>Protection on</i>).</li>
+  <li>chatgpt.com logged in, <b>new chat</b> open.</li>
+  <li>Turn off other extensions (Grammarly etc.).</li>
+  <li>Zoom the page to 125% so the room can read it.</li>
+</ul>
+<h3>Desktop (Mac)</h3>
+<ul class="check">
+  <li>MIRAGE running: shield in the menu bar, status <i>Protected</i> for ChatGPT.</li>
+  <li>ChatGPT desktop app open on a <b>new chat</b>; the <b>"MIRAGE active"</b> badge shows above the message box.</li>
+  <li>Menu bar → MIRAGE: <i>Show "MIRAGE active"</i> is on.</li>
+  <li>If the badge doesn't show: System Settings → Privacy &amp; Security → Accessibility → MIRAGE on, then relaunch MIRAGE.</li>
+</ul>
+</div>
+<div>
+<h3>CLI (terminal)</h3>
+<ul class="check">
+  <li>Installed: <code>npm install -g https://github.com/NinadPandith/Mirage-Cli/raw/main/release/nexora-mirage-cli-0.1.8.tgz</code></li>
+  <li>Reset so the demo map is the latest: <code>mirage maps clear --yes</code></li>
+  <li>Practice files: <code>mirage demo</code> then <code>cd mirage-demo</code></li>
+  <li>Terminal font 20 pt or more.</li>
+  <li>For the chat step: <code>claude -p "say hi"</code> answers (Claude Code logged in).</li>
+</ul>
+<h3>General</h3>
+<ul class="check">
+  <li>Phone hotspot ready in case the Wi-Fi is bad.</li>
+  <li>This PDF open on a second screen, or the inputs (page 6) in a notes app to copy from.</li>
+  <li>Notifications off (Do Not Disturb).</li>
+</ul>
+</div>
+</div>
+
+<h2>Opening · 0:00–0:45</h2>
+<p class="say">"Every day people paste their PAN, Aadhaar, phone numbers and even API keys into ChatGPT and Claude. Once it's sent, it's on someone else's server. MIRAGE is a privacy firewall for AI: it checks every prompt <b>on your own device</b>, replaces personal details with placeholders, removes secrets completely, and nothing is sent until you choose. The same engine runs in three places: the browser, the ChatGPT and Claude desktop apps, and the terminal."</p>
+
+<!-- ======================= PART A ======================= -->
+<h2>Part A · Browser extension on chatgpt.com · 0:45–4:00</h2>
+
+<div class="step">
+<h3>A1 · A normal prompt passes untouched (20 s)</h3>
+<div class="lbl">Type in ChatGPT</div>
+<span class="type">Explain how UPI payments work in three simple lines.</span>
+<div class="lbl">What happens</div>
+<p>No popup. The message sends as usual. <span class="tag safe">Safe · 0/100</span></p>
+<div class="lbl">Say</div>
+<p class="say">"No false alarms: if there's nothing sensitive, MIRAGE stays out of the way."</p>
+</div>
+
+<div class="step">
+<h3>A2 · Personal details get hidden (60 s) ★ main moment</h3>
+<div class="lbl">Type (or paste) in ChatGPT, then press Enter</div>
+<span class="type">Hi, I'm Priya Nair. My PAN is BNZPM2501K, Aadhaar 2341 2341 2346, phone 98450 12345 and email priya.nair@gmail.com. Write a short letter to my bank asking them to update my KYC.</span>
+<div class="lbl">What happens</div>
+<ul>
+  <li>While typing, the shield badge by the message box turns red.</li>
+  <li>Enter is stopped and the review opens: <b>5 items will be hidden before sending</b> · <span class="tag crit">Critical · 100/100</span> · Name, PAN, Aadhaar, Phone, Email.</li>
+  <li>Click <b>Review</b> to show "Why 100?", the points behind the score.</li>
+  <li>Click <b>Protect &amp; send</b>. ChatGPT receives:</li>
+</ul>
+<span class="out">Hi, I'm <span class="ph">«PERSON_1»</span>. My PAN is <span class="ph">«PAN_1»</span>, Aadhaar <span class="ph">«AADHAAR_1»</span>, phone <span class="ph">«PHONE_1»</span> and email <span class="ph">«EMAIL_1»</span>. Write a short letter to my bank asking them to update my KYC.</span>
+<ul><li>In ChatGPT's reply, <b>hover a placeholder</b>: MIRAGE shows the real value, on this laptop only. Use <b>Copy with details</b> under the reply to copy the letter with the real details filled in.</li></ul>
+<div class="lbl">Say</div>
+<p class="say">"ChatGPT never saw Priya's PAN or Aadhaar, only placeholders. The real values stay encrypted on this laptop and come back in the reply only here. The Aadhaar is confirmed with its checksum, so random 12-digit numbers don't trigger it."</p>
+</div>
+
+<div class="step">
+<h3>A3 · Secrets are blocked, not hidden (40 s)</h3>
+<div class="lbl">Type, then press Enter</div>
+<span class="type">My deploy keeps failing. Config: AWS_ACCESS_KEY_ID=AKIAQ7Z3MIRAGEDEMO42 and db password=S3cr3tPass@2026. What is wrong?</span>
+<div class="lbl">What happens</div>
+<p><span class="tag crit">Critical · 100/100</span> · AWS access key + password. Protect &amp; send sends:</p>
+<span class="out">My deploy keeps failing. Config: AWS_ACCESS_KEY_ID=<span class="rm">«AWS_ACCESS_KEY_REMOVED»</span> and db password=<span class="rm">«PASSWORD_REMOVED»</span>. What is wrong?</span>
+<p>Point out: <b>Send anyway</b> asks for a second confirmation for secrets.</p>
+<div class="lbl">Say</div>
+<p class="say">"Keys and passwords are never stored and never put back. They're simply removed. One leaked AWS key can cost lakhs."</p>
+</div>
+
+<div class="step">
+<h3>A4 · Health data: keep what the AI needs (30 s)</h3>
+<span class="type">My name is Arjun Menon, DOB 14/03/2002. My HbA1c is 7.9 and I take metformin. What diet should I follow?</span>
+<p><span class="tag high">High · 52/100</span> · the name and DOB are hidden; <b>HbA1c 7.9</b> and <b>metformin</b> are kept (the AI needs them) but counted in the score, with +15 for health data tied to a person.</p>
+<span class="out">My name is <span class="ph">«PERSON_1»</span>, DOB <span class="ph">«DOB_1»</span>. My HbA1c is 7.9 and I take metformin. What diet should I follow?</span>
+<p class="say">"It's not a blind filter: the medical detail stays so the answer is still useful, but the AI can't tell whose it is."</p>
+</div>
+
+<div class="step">
+<h3>A5 · Tricks don't work (20 s, optional)</h3>
+<span class="type">Why was my payment declined? Card 4111 1111 1111 1111, expiry 12/28, OTP 482913.</span>
+<p><span class="tag crit">Critical · 99/100</span> → Card <span class="rm">«CARD_REMOVED»</span>, OTP <span class="rm">«OTP_REMOVED»</span> (the card is confirmed with the Luhn check).</p>
+<span class="type">Email me at priya.nair [at] gmail [dot] com and call +91-98450-12345.</span>
+<p>The disguised email and the dashed phone number are both caught: <span class="ph">«EMAIL_1»</span>, <span class="ph">«PHONE_1»</span>.</p>
+</div>
+
+<div class="step">
+<h3>A6 · Private Compose: the strongest mode (40 s)</h3>
+<ol>
+  <li>Click the MIRAGE shield in the toolbar → <b>Private Compose</b>. A side panel opens.</li>
+  <li>Paste the A2 prompt into the side panel. It shows <b>5 items will be hidden or removed</b> and a live preview with the placeholders.</li>
+  <li>Click <b>Insert protected</b>. Only the protected text lands in ChatGPT's box → press Send.</li>
+</ol>
+<p class="say">"Here ChatGPT's page never sees the raw text at all, not even while you type."</p>
+</div>
+
+<!-- ======================= PART B ======================= -->
+<h2 class="page">Part B · Desktop companion in the ChatGPT Mac app · 4:00–7:00</h2>
+<p class="say">"Many people don't use the website at all; they use the ChatGPT and Claude desktop apps. A browser extension can't see those, so we built a desktop companion that works the same way."</p>
+
+<div class="step">
+<h3>B1 · It's on (15 s)</h3>
+<p>Point at the <b>shield in the menu bar</b> (status: ChatGPT <i>Protected</i>) and the green <b>"MIRAGE active"</b> badge above ChatGPT's message box.</p>
+<p class="say">"This badge tells you MIRAGE is watching this box. It only reads the message box of ChatGPT and Claude: no keylogger, no screen recording."</p>
+</div>
+
+<div class="step">
+<h3>B2 · The review opens as you type (60 s) ★ main moment</h3>
+<div class="lbl">Type in the ChatGPT app (don't press Enter yet)</div>
+<span class="type">I'm Rahul Sharma. My PAN is PQRSX6789K and my UPI is rahul.sharma@okhdfcbank. Draft an email to HDFC support, IFSC HDFC0001234, asking why my refund is late.</span>
+<div class="lbl">What happens</div>
+<ul>
+  <li>The badge turns amber: <b>4 items will be hidden</b>.</li>
+  <li>About 0.15 s after you stop typing, the review opens above the box: <b>High privacy risk</b> · <span class="tag high">55/100</span> · "Your information has NOT been sent yet." · Name, PAN, UPI, IFSC.</li>
+  <li>Press <b>Enter</b> to show that nothing is sent while the review is open.</li>
+  <li>Click <b>Protect &amp; Send</b>. MIRAGE rewrites the box, sends it and shows <i>"Sent protected · 4 hidden · 0 removed"</i>. The chat shows:</li>
+</ul>
+<span class="out">I'm <span class="ph">«PERSON_1»</span>. My PAN is <span class="ph">«PAN_1»</span> and my UPI is <span class="ph">«UPI_1»</span>. Draft an email to HDFC support, IFSC <span class="ph">«IFSC_1»</span>, asking why my refund is late.</span>
+<p class="say">"Exactly like the extension, but inside a native app. The message is held until you decide."</p>
+</div>
+
+<div class="step">
+<h3>B3 · A secret in code (40 s)</h3>
+<span class="type">Fix this code: const key = "sk-proj-Xy7Qm2Lp9Rt4Vb8Nc3Kd6Hf1Js5Gw0Ez"; fetch(url, { headers: { Authorization: key } })</span>
+<p>The badge shows <b>Secret · won't be sent</b>; the review says <b>Critical privacy risk</b> · <span class="tag crit">71/100</span>. Protect &amp; Send sends:</p>
+<span class="out">Fix this code: const key = "<span class="rm">«OPENAI_KEY_REMOVED»</span>"; fetch(url, { headers: { Authorization: key } })</span>
+</div>
+
+<div class="step">
+<h3>B4 · Cancel leaves everything untouched (20 s)</h3>
+<p>Type the A2 prompt, and when the review opens click <b>Cancel</b>. The text stays in the box exactly as typed, and nothing was sent.</p>
+</div>
+
+<div class="step">
+<h3>B5 · Private Compose on the desktop (30 s, optional)</h3>
+<p>Press <b>⌥⌘M</b> (or menu bar → <b>Private Compose</b>). Type the B2 prompt in MIRAGE's own window, check the preview, choose ChatGPT, then click <b>Insert protected</b>. Only the protected text goes into ChatGPT.</p>
+</div>
+
+<div class="box"><b>Windows:</b> the same companion is available for Windows as a beta. Install it with <b>Install-MIRAGE-Desktop.bat</b> from github.com/Darshanj-dev/Mirage#download. It is built and self-tested on Windows by GitHub Actions but <b>not yet tried with the ChatGPT or Claude apps on Windows</b>, so say "beta" if asked.</div>
+
+<!-- ======================= PART C ======================= -->
+<h2>Part C · CLI for developers (Ninad) · 7:00–9:15</h2>
+<p class="say">"Same engine, now for developers who paste logs and code into AI." All outputs below are real, captured on 29 Sep 2026 with mirage-cli 0.1.8.</p>
+
+<div class="step">
+<h3>C1 · Show the log (10 s)</h3>
+<span class="type">cat error.log</span>
+<span class="out">2026-09-29 10:02:12 DEBUG loaded env OPENAI_API_KEY=sk-proj-Xy7Qm2Lp9Rt4Vb8Nc3Kd6Hf1Js5Gw0Ez
+2026-09-29 10:02:14 ERROR refund failed for customer priya.nair@example-mail.in
+2026-09-29 10:02:14 ERROR   kyc lookup: aadhaar 2341 2341 2346 not verified
+2026-09-29 10:02:14 ERROR   callback to +91 98450 12345 timed out after 30000ms</span>
+<p class="say">"A normal server log: an API key, an email, an Aadhaar number and a phone number. Developers paste this into ChatGPT every day."</p>
+</div>
+
+<div class="step">
+<h3>C2 · It stops secrets (15 s)</h3>
+<span class="type">mirage mask error.log</span>
+<span class="out">Line 2 looks like an API key (sk-•••••w0Ez). Nothing was written.
+Remove it, or run again with --strip-secrets.</span>
+</div>
+
+<div class="step">
+<h3>C3 · Remove the secret, hide the rest (20 s)</h3>
+<span class="type">mirage mask error.log --strip-secrets</span>
+<span class="out">... OPENAI_API_KEY=<span class="rm">«SECRET_REMOVED»</span>
+... refund failed for customer <span class="ph">«EMAIL_1»</span>
+... kyc lookup: aadhaar <span class="ph">«AADHAAR_1»</span> not verified
+... callback to <span class="ph">«PHONE_1»</span> timed out after 30000ms
+1 secret removed. It is not saved anywhere.
+3 items hidden · map m_20260929_…· run "mirage unmask" on the AI's reply</span>
+<p class="say">"This is what you paste into any AI."</p>
+</div>
+
+<div class="step">
+<h3>C4 · The real details come back (20 s)</h3>
+<span class="type">mirage unmask reply.txt</span>
+<span class="out">The refund for priya.nair@example-mail.in failed because the KYC check rejected Aadhaar 2341 2341 2346
+before the payment step ran, so the callback to +91 98450 12345 never got a response ...
+3 placeholders restored from map m_20260929_…</span>
+</div>
+
+<div class="step">
+<h3>C5 · Scan a whole folder (15 s, optional)</h3>
+<span class="type">mirage scan .</span>
+<span class="out">error.log
+  2:53  API_KEY  sk-•••••w0Ez           secret
+  3:54  EMAIL    p••••@example-mail.in  hide
+  4:49  AADHAAR  •••• •••• 2346         hide
+  5:41  PHONE    ••••••2345             hide
+3 files checked · 3 to hide · 1 secret</span>
+</div>
+
+<div class="step">
+<h3>C6 · Chat with Claude through MIRAGE (40 s, needs internet)</h3>
+<span class="type">mirage chat claude</span>
+<div class="lbl">At the <code>you ›</code> prompt type</div>
+<span class="type">My PAN is PQRSX6789K. Write one line confirming my PAN.</span>
+<span class="out">  sent › My PAN is <span class="ph">«PAN_1»</span>. Write one line confirming my PAN.   ← what Claude received
+claude ›
+Your PAN is PQRSX6789K.                                    ← real value put back
+  1 placeholder restored</span>
+<p>Then type <code>my password is Hunter@123</code> → <i>Not sent: it looks like a password (••••••).</i> Then <code>/exit</code>.</p>
+<p class="say">"Claude only ever saw the placeholder, and we can prove it from Claude Code's own saved history:"</p>
+<span class="type">grep -r "PQRSX6789K" ~/.claude/projects/*mirage-demo* | wc -l      # expected 0
+grep -r "PAN_1" ~/.claude/projects/*mirage-demo* | wc -l           # expected 1 or more</span>
+<p>Windows (PowerShell): <code>(Select-String -Path "$HOME\.claude\projects\*mirage-demo*\*.jsonl" -Pattern "PQRSX6789K" -SimpleMatch).Count</code></p>
+</div>
+
+<h2>Closing · 9:15–10:00</h2>
+<p class="say">"One detection engine and three products: the browser, the desktop apps and the terminal. Everything runs on your device. There's no MIRAGE server, no account, and secrets are never stored. It catches Aadhaar and cards with real checksums, scores the risk from 0 to 100, and explains every point. You stay in control: nothing is sent until you choose."</p>
+
+<!-- ======================= Q&A + BACKUP ======================= -->
+<h2 class="page">Q&amp;A cheat sheet</h2>
+<table>
+  <tr><th style="width:32%">Question</th><th>Answer</th></tr>
+  <tr><td>Does my data go to your server?</td><td>No. Detection runs on the device (browser, Mac app, terminal). There is no MIRAGE server. Only the protected text goes to the AI.</td></tr>
+  <tr><td>How does it detect?</td><td>Layers: text clean-up (hidden characters, look-alike letters, Indian-script digits) → patterns with checksums (Aadhaar Verhoeff, card Luhn, PAN format) → entropy for random-looking keys → context words ("PAN", "DOB", "my name is") → risk score.</td></tr>
+  <tr><td>How accurate is it?</td><td>On our 181-prompt test set: precision 1.000, recall 0.996, F1 0.998, 0 false alarms on 28 clean look-alikes. Be honest: we wrote the test set ourselves; a blind test by others is next.</td></tr>
+  <tr><td>How fast?</td><td>0.05 ms per prompt on average for detection. On the Mac the review opens about 0.15 s after you stop typing.</td></tr>
+  <tr><td>What does it miss?</td><td>Names only with context ("my name is …"); a PAN split with spaces (e.g. "BNZPM 2501 K"); non-English text. Details it misses are sent as typed. That's why the review shows exactly what will be hidden.</td></tr>
+  <tr><td>Is the desktop app a keylogger?</td><td>No. It reads only the message box of ChatGPT and Claude, only while they're in front. It watches only Return and clicks on Send, never records the screen and never logs text (its log has reason codes and timings only).</td></tr>
+  <tr><td>Where are the real values kept?</td><td>Encrypted on the device (AES-GCM) for 24 hours so replies can show them; secrets are never stored at all.</td></tr>
+  <tr><td>What about the reply?</td><td>The extension checks the AI's reply and shows the real values on hover, on your device only. The CLI's <code>unmask</code> does the same for text.</td></tr>
+  <tr><td>Which platforms?</td><td>Extension: ChatGPT, Gemini, Claude, Copilot, Perplexity (Chrome, Edge, Firefox). Desktop: ChatGPT and Claude apps on Mac; Windows is a beta. CLI: Windows, macOS, Linux.</td></tr>
+</table>
+
+<h2>If something goes wrong on stage</h2>
+<table>
+  <tr><th style="width:32%">Problem</th><th>Do this</th></tr>
+  <tr><td>No review on chatgpt.com</td><td>Check the toolbar shield says <i>Protection on</i>; reload the ChatGPT tab (Cmd/Ctrl+R) and try again.</td></tr>
+  <tr><td>No badge or review in the ChatGPT app</td><td>Menu bar → MIRAGE → check ChatGPT shows <i>Protected</i>. Quit and reopen MIRAGE. Fallback: use Private Compose (⌥⌘M).</td></tr>
+  <tr><td>Wi-Fi is down</td><td>Switch to the hotspot. The CLI steps C1–C5 work offline; skip C6.</td></tr>
+  <tr><td>ChatGPT is slow to answer</td><td>Don't wait for the reply: the point is what was <b>sent</b>, which is visible at once in the chat.</td></tr>
+  <tr><td><code>mirage chat claude</code> errors</td><td>Skip C6 and show C4 (unmask) instead; it tells the same story offline.</td></tr>
+</table>
+
+<h2 class="page">All inputs in one place (copy from here)</h2>
+<table>
+  <tr><th style="width:9%">Step</th><th>Input</th><th style="width:22%">Expected</th></tr>
+  <tr><td>A1</td><td><span class="type">Explain how UPI payments work in three simple lines.</span></td><td><span class="tag safe">0 · safe</span> no popup</td></tr>
+  <tr><td>A2 / B4</td><td><span class="type">Hi, I'm Priya Nair. My PAN is BNZPM2501K, Aadhaar 2341 2341 2346, phone 98450 12345 and email priya.nair@gmail.com. Write a short letter to my bank asking them to update my KYC.</span></td><td><span class="tag crit">100 · critical</span> 5 hidden</td></tr>
+  <tr><td>A3</td><td><span class="type">My deploy keeps failing. Config: AWS_ACCESS_KEY_ID=AKIAQ7Z3MIRAGEDEMO42 and db password=S3cr3tPass@2026. What is wrong?</span></td><td><span class="tag crit">100 · critical</span> 2 removed</td></tr>
+  <tr><td>A4</td><td><span class="type">My name is Arjun Menon, DOB 14/03/2002. My HbA1c is 7.9 and I take metformin. What diet should I follow?</span></td><td><span class="tag high">52 · high</span> 2 hidden, health kept</td></tr>
+  <tr><td>A5</td><td><span class="type">Why was my payment declined? Card 4111 1111 1111 1111, expiry 12/28, OTP 482913.</span></td><td><span class="tag crit">99 · critical</span> card + OTP removed</td></tr>
+  <tr><td>A5</td><td><span class="type">Email me at priya.nair [at] gmail [dot] com and call +91-98450-12345.</span></td><td>email + phone hidden</td></tr>
+  <tr><td>B2</td><td><span class="type">I'm Rahul Sharma. My PAN is PQRSX6789K and my UPI is rahul.sharma@okhdfcbank. Draft an email to HDFC support, IFSC HDFC0001234, asking why my refund is late.</span></td><td><span class="tag high">55 · high</span> 4 hidden</td></tr>
+  <tr><td>B3</td><td><span class="type">Fix this code: const key = "sk-proj-Xy7Qm2Lp9Rt4Vb8Nc3Kd6Hf1Js5Gw0Ez"; fetch(url, { headers: { Authorization: key } })</span></td><td><span class="tag crit">71 · critical</span> key removed</td></tr>
+  <tr><td>C6</td><td><span class="type">My PAN is PQRSX6789K. Write one line confirming my PAN.</span></td><td>sent as «PAN_1»</td></tr>
+  <tr><td>C6</td><td><span class="type">my password is Hunter@123</span></td><td>not sent</td></tr>
+</table>
+
+<p class="foot">Downloads: github.com/Darshanj-dev/Mirage#download (extension, desktop) · github.com/NinadPandith/Mirage-Cli (CLI). Scores are from MIRAGE Core v1.0.0, checked 29 Sep 2026; the A5 disguised-email input was checked without the PAN, because a PAN split with spaces is not caught.</p>
+</body>
+</html>
