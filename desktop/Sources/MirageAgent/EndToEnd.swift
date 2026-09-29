@@ -42,6 +42,7 @@ public enum EndToEnd {
         prompt = action.hasPrefix("long") || action.hasPrefix("real") ? longPrompt : shortPrompt
         if action == "compose" { return compose(bundleID: bundleID) }
         if action == "live" { return liveMarks(bundleID: bundleID) }
+        if action == "human" { return human(bundleID: bundleID) }
         guard let adapter = AdapterRegistry.adapter(forBundle: bundleID),
               let target = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first else { return ["FAIL \(bundleID) not running"] }
         guard let mirage = NSRunningApplication.runningApplications(withBundleIdentifier: "dev.mirage.desktop")
@@ -271,5 +272,86 @@ extension EndToEnd {
         let line = ((try? String(contentsOf: status, encoding: .utf8)) ?? "").split(separator: "\n").first { $0.hasPrefix("live=") }.map(String.init) ?? "live=?"
         _ = adapter.replaceInput(input, with: original)
         return ["target=\(adapter.displayName) action=live", line, "prompt box frame (AX): \(AX.frame(input).map { "\(Int($0.minX)),\(Int($0.minY)) \(Int($0.width))x\(Int($0.height))" } ?? "?")"]
+    }
+}
+
+
+extension EndToEnd {
+    static func hidClick(_ p: CGPoint) {
+        let src = CGEventSource(stateID: .hidSystemState)
+        CGEvent(mouseEventSource: src, mouseType: .mouseMoved, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap)
+        usleep(150_000)
+        CGEvent(mouseEventSource: src, mouseType: .leftMouseDown, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap)
+        usleep(70_000)
+        CGEvent(mouseEventSource: src, mouseType: .leftMouseUp, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap)
+    }
+
+    static func hidType(_ text: String) {
+        let src = CGEventSource(stateID: .hidSystemState)
+        for ch in text.utf16 {
+            for down in [true, false] {
+                let e = CGEvent(keyboardEventSource: src, virtualKey: 0, keyDown: down)
+                e?.keyboardSetUnicodeString(stringLength: 1, unicodeString: [ch])
+                e?.post(tap: .cghidEventTap)
+            }
+            usleep(12_000) // a fast typist
+        }
+    }
+
+    /// Everything as a person does it, no shortcuts: click into the box, type on the keyboard,
+    /// press Return, click Protect & Send with the mouse. Then check what the app got.
+    static func human(bundleID: String) -> [String] {
+        guard let adapter = AdapterRegistry.adapter(forBundle: bundleID),
+              let target = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first else { return ["FAIL not running"] }
+        let app = AXUIElementCreateApplication(target.processIdentifier)
+        AXUIElementSetMessagingTimeout(app, 3)
+        adapter.prepare(app: app)
+        target.activate()
+        Thread.sleep(forTimeInterval: 1)
+        guard let input = adapter.inputElement(app: app), let box = AX.frame(input) else { return ["FAIL input not found"] }
+        var out = ["target=\(adapter.displayName) action=human (real clicks and keystrokes)"]
+        _ = adapter.replaceInput(input, with: "") // start from an empty box
+        Thread.sleep(forTimeInterval: 0.5)
+        let text = "Hi I'm Priya Nair. My PAN is BNZPM2501K and my email is priya.demo@example.com. AWS key \(awsId). Reply with one word: ok."
+        hidClick(CGPoint(x: box.midX, y: box.midY))
+        Thread.sleep(forTimeInterval: 0.4)
+        hidType(text)
+        Thread.sleep(forTimeInterval: 1.5)
+        let typed = adapter.readInput(input) ?? ""
+        out.append("typed into the box: \(normalizedPromptText(typed) == normalizedPromptText(text) ? "all" : "\(typed.count) of \(text.count) chars")")
+        let src = CGEventSource(stateID: .hidSystemState)
+        CGEvent(keyboardEventSource: src, virtualKey: 36, keyDown: true)?.post(tap: .cghidEventTap)
+        var samples: [String] = []
+        for i in 0..<4 { usleep(50_000); samples.append("down+\(50 * (i + 1))ms:\((adapter.readInput(input) ?? "").count)") }
+        CGEvent(keyboardEventSource: src, virtualKey: 36, keyDown: false)?.post(tap: .cghidEventTap)
+        for i in 0..<6 { usleep(100_000); samples.append("up+\(100 * (i + 1))ms:\((adapter.readInput(input) ?? "").count)") }
+        out.append("box length after Return: " + samples.joined(separator: " "))
+        let status = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0].appendingPathComponent("Logs/MIRAGE/debug/status.txt")
+        var statusText = ""
+        let returnAt = Date()
+        for _ in 0..<60 {
+            Thread.sleep(forTimeInterval: 0.1)
+            try? FileManager.default.removeItem(at: status)
+            DistributedNotificationCenter.default().postNotificationName(.init("dev.mirage.debug.capture"), object: nil, userInfo: nil, deliverImmediately: true)
+            Thread.sleep(forTimeInterval: 0.1)
+            statusText = (try? String(contentsOf: status, encoding: .utf8)) ?? ""
+            if statusText.contains("decisionPanel=") && !statusText.contains("decisionPanel=none") { break }
+        }
+        out.append(String(format: "popup visible %.1f s after Return (driver polling)", Date().timeIntervalSince(returnAt)))
+        out += statusText.split(separator: "\n").filter { $0.hasPrefix("gateCheckMs") }.map(String.init)
+        let stillInBox = raw.filter { (adapter.readInput(input) ?? "").contains($0) }.count
+        out.append("after Return: popup \(statusText.contains("decisionOpen=true") ? "SHOWN" : "NOT shown"), raw values still in the box (unsent): \(stillInBox)")
+        guard let line = statusText.split(separator: "\n").first(where: { $0.hasPrefix("decisionPanel=") }),
+              case let f = line.dropFirst("decisionPanel=".count).split(separator: ",").compactMap({ Double($0) }), f.count == 4 else { return out + ["FAIL no popup"] }
+        let h = NSScreen.screens.first?.frame.height ?? 0
+        out.append("popup at \(line.dropFirst(14)) (on screen: \(f[1] >= 0 && f[1] + f[3] <= h))")
+        hidClick(CGPoint(x: f[0] + f[2] - 18 - 55, y: h - (f[1] + 18 + 12)))
+        Thread.sleep(forTimeInterval: 6)
+        let after = adapter.readInput(input) ?? ""
+        let texts = conversationText(app: app, excluding: input)
+        let tail = String(texts.suffix(600))
+        out.append("after Protect & Send: box \(normalizedPromptText(after).count < 20 ? "emptied (sent)" : "still has text")")
+        out.append("newest part of the chat has placeholders: \(tail.contains("«PAN_1»") || tail.contains("PERSON_1") || tail.contains("REMOVED")), raw values in it: \(raw.filter { tail.contains($0) }.count)")
+        return out
     }
 }

@@ -135,6 +135,21 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
     private var sendFrame: CGRect?
     /// Where the prompt box is (clicks around it, not in it, may be on a send button not yet cached).
     private var inputFrame: CGRect?
+    /// The protected app's front window (top-left origin), for the composer area.
+    private var windowFrame: CGRect?
+
+    /// Reason codes of the gate's decisions, appended to ~/Library/Logs/MIRAGE/gate.log: codes and
+    /// times only (never text), so a failed attempt can be explained.
+    private func trace(_ code: String) {
+        let line = "\(ISO8601DateFormatter().string(from: Date())) \(code)\n"
+        axQueue.async {
+            let dir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0].appendingPathComponent("Logs/MIRAGE", isDirectory: true)
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            let url = dir.appendingPathComponent("gate.log")
+            if let h = try? FileHandle(forWritingTo: url) { h.seekToEndOfFile(); h.write(Data(line.utf8)); try? h.close() }
+            else { try? Data(line.utf8).write(to: url) }
+        }
+    }
     /// A held send is being checked in the background: anything else is held too until it's done.
     private var checking = false
     public private(set) var lastCheckMs: Double = 0
@@ -212,6 +227,7 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
         front = nil
         sendFrame = nil
         inputFrame = nil
+        windowFrame = nil
         live = nil
         checking = false
         lastInput = nil
@@ -270,9 +286,14 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
             // Only clicks on (or near) the send button; clicks in the text itself pass untouched.
             let onSend = sendFrame.map { $0.insetBy(dx: -4, dy: -4).contains(p) } ?? false
             let nearBox = inputFrame.map { !$0.contains(p) && $0.insetBy(dx: -160, dy: -160).contains(p) } ?? false
-            guard onSend || nearBox else { lastGateReason = "clickNotSend"; return false }
+            // Where the composer lives (bottom 40% of the app's window), in case the caches are not
+            // filled yet: checked in the background, re-sent at once if it isn't a send.
+            let composerArea = windowFrame.map { w in CGRect(x: w.minX, y: w.minY + w.height * 0.6, width: w.width, height: w.height * 0.4).contains(p) } ?? false
+            let inText = inputFrame.map { $0.contains(p) } ?? false
+            guard onSend || nearBox || (composerArea && !inText) else { lastGateReason = "clickNotSend"; trace("click-pass"); return false }
         }
-        if decision != nil || checking { lastGateReason = "heldWhileBusy"; return true }
+        if decision != nil || checking { lastGateReason = "heldWhileBusy"; trace("held-busy"); return true }
+        trace(trigger == .returnKey ? "held-return" : "held-click")
         checking = true
         lastHoldAt = CFAbsoluteTimeGetCurrent()
         checkHeld(trigger, front: front)
@@ -284,25 +305,26 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
         guard let core else { checking = false; return }
         let settings = settings
         let lastKnownInput = lastInput?.element
-        axQueue.async { [weak self] in
+        gateQueue.async { [weak self] in
             enum Verdict { case pass, decide(Analysis, String, AXElement), unreadable(AXElement?) }
             let verdict: Verdict = {
                 var input: AXElement?
                 switch trigger {
                 case .returnKey:
-                    guard let focused = AX.focusedElement(of: front.app) else { return lastKnownInput.map { .unreadable($0) } ?? .pass }
-                    guard front.adapter.isInput(focused) else { return .pass } // Return in another field
-                    input = focused
+                    // Always check the prompt box's text, wherever the app says focus is: focus is
+                    // reported differently by different app builds, and a mismatch must never let
+                    // a send through unchecked.
+                    input = front.adapter.inputElement(app: front.app) ?? lastKnownInput
                 case .click(let p):
                     var el = AX.element(at: p)
                     var isSend = false
-                    for _ in 0..<4 {
+                    for _ in 0..<5 {
                         guard let e = el, AX.pid(e) == front.pid else { break }
                         if front.adapter.isSendControl(e) { isSend = true; break }
                         el = AX.parent(e)
                     }
                     guard isSend else { return .pass }
-                    input = lastKnownInput ?? front.adapter.inputElement(app: front.app)
+                    input = front.adapter.inputElement(app: front.app) ?? lastKnownInput
                 }
                 guard let input, let text = front.adapter.readInput(input) else { return .unreadable(input) }
                 guard let analysis = try? core.analyze(text, settings: settings.detection, policy: settings.policy) else { return .unreadable(input) }
@@ -317,12 +339,14 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
                     switch verdict {
                     case .pass:
                         self.lastGateReason = "clean"
+                        self.trace("checked-clean-resent")
                         delta.checked = 1
                         self.record(delta, app: front.adapter.id)
                         self.replay(trigger, pid: front.pid)
                         if case .returnKey = trigger { self.scheduleReplyCheck(front: front) }
                     case .decide(let analysis, let text, let input):
                         self.lastGateReason = "held"
+                        self.trace("decision-shown items=\(analysis.actionable.count)")
                         delta.checked = 1
                         delta.held = 1
                         self.record(delta, app: front.adapter.id)
@@ -331,6 +355,7 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
                         self.decision = Decision(app: front.adapter.id, appName: front.adapter.displayName, analysis: analysis, heldSubmission: true, unreadable: false, original: text, appElement: front.app, input: input)
                     case .unreadable(let input):
                         self.lastGateReason = "unreadable"
+                        self.trace("decision-shown unreadable")
                         self.decision = Decision(app: front.adapter.id, appName: front.adapter.displayName, analysis: Analysis.empty, heldSubmission: true, unreadable: true, original: "", appElement: front.app, input: input)
                     }
                 }
@@ -427,7 +452,7 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
         let settings = settings
         let original = d.original
         let keep = Array(d.keep)
-        axQueue.async { [weak self] in
+        gateQueue.async { [weak self] in
             let outcome: ProtectOutcome = {
                 Thread.sleep(forTimeInterval: 0.15)
                 guard let current = adapter.readInput(input) else {
@@ -467,9 +492,11 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
             guard let fresh = try? core.analyze(text, settings: settings.detection, policy: settings.policy) else { return }
             decision = Decision(app: d.app, appName: d.appName, analysis: fresh, heldSubmission: true, unreadable: false, original: text, appElement: d.appElement, input: d.input)
         case .failed(let message):
+            trace("protect-failed")
             log.error("protect flow stopped before sending")
             fail(message)
         case .sent(let protected):
+            trace("protect-sent hidden=\(protected.hidden) removed=\(protected.removed)")
             var delta = Counts()
             delta.protectedSends = 1
             delta.masked = protected.hidden
@@ -480,6 +507,7 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
             toast = Toast(text: "Sent protected · \(protected.hidden) hidden · \(protected.removed) removed", success: true)
             scheduleReplyCheck(front: front)
         case .notConfirmed:
+            trace("protect-not-confirmed")
             log.error("send not confirmed by the app")
             decision = nil
             toast = Toast(text: "\(d.appName) didn't send. Your protected message is in the box: press Send.", success: false)
@@ -499,6 +527,9 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
     /// Accessibility reads for the live shield and the send-button cache run here, off the main
     /// thread, so typing in the AI app never waits on MIRAGE. Results are applied on main.
     private let axQueue = DispatchQueue(label: "dev.mirage.ax", qos: .utility)
+    /// The send check and Protect & Send run here, never queued behind background work: a held
+    /// send must be answered at once (live refresh on the other queue delayed the panel by seconds).
+    private let gateQueue = DispatchQueue(label: "dev.mirage.gate", qos: .userInteractive)
     private var lastLiveText: String?
 
     private func refreshLiveRisk() {
@@ -511,40 +542,19 @@ public final class ProtectionController: ObservableObject, SubmitGateDelegate {
             }
             let send = front.adapter.sendControl(app: front.app, near: input).flatMap(AX.frame)
             let inputBox = AX.frame(input)
+            let window: CGRect? = { () -> CGRect? in
+                guard let w: CFTypeRef = AX.attribute(front.app, kAXFocusedWindowAttribute), CFGetTypeID(w) == AXUIElementGetTypeID() else { return nil }
+                return AX.frame(w as! AXElement)
+            }()
             let analysis = try? core.analyze(text, settings: settings.detection, policy: settings.policy)
-            let sentAs = (try? core.previewPlaceholders(text, settings: settings.detection)) ?? []
-            // Where each finding is on screen, for the underlines: asked of the box, else of the text
-            // runs inside it (browser-based editors answer per run), else estimated from the run's width.
-            let runs = AX.findAll(in: input, maxDepth: 12, maxNodes: 600) { AX.role($0) == kAXStaticTextRole }
-                .compactMap { el -> (el: AXElement, text: String, frame: CGRect)? in
-                    guard let t = AX.value(el), !t.isEmpty, let f = AX.frame(el), f.width > 0 else { return nil }
-                    return (el, t, f)
-                }
-            var used: [Int: Int] = [:] // run index → search position, so repeated values map in order
-            let marks: [LiveMarks.Mark] = (analysis?.findings ?? []).enumerated().compactMap { index, f in
-                let kind: LiveMarks.Kind = f.policy == .block ? .secret : f.policy == .warn ? .warn : .personal
-                let placeholder = index < sentAs.count ? sentAs[index] : nil
-                func mark(_ rect: CGRect) -> LiveMarks.Mark { LiveMarks.Mark(rect: rect, kind: kind, name: f.kind ?? f.type, sentAs: placeholder) }
-                if let rect = AX.bounds(of: input, start: f.start, length: f.end - f.start) { return mark(rect) }
-                for (i, run) in runs.enumerated() {
-                    let ns = run.text as NSString
-                    let from = used[i] ?? 0
-                    let hit = ns.range(of: f.value, range: NSRange(location: from, length: ns.length - from))
-                    guard hit.location != NSNotFound else { continue }
-                    used[i] = hit.location + hit.length
-                    if let rect = AX.bounds(of: run.el, start: hit.location, length: hit.length) { return mark(rect) }
-                    let perChar = run.frame.width / CGFloat(max(1, ns.length))
-                    return mark(CGRect(x: run.frame.minX + perChar * CGFloat(hit.location), y: run.frame.minY,
-                                       width: perChar * CGFloat(hit.length), height: run.frame.height))
-                }
-                return nil
-            }
+            let marks: [LiveMarks.Mark] = [] // no underlines (by request); cheap refresh only
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
                     guard let self, self.front?.pid == front.pid else { return }
                     self.lastInput = (input, Date())
                     if let send, send.width > 0 { self.sendFrame = send }
                     if let box = inputBox, box.width > 0 { self.inputFrame = box; self.promptBoxFrame = box }
+                    if let window, window.width > 0 { self.windowFrame = window }
                     self.lastLiveText = text
                     self.liveRisk = analysis?.risk.level ?? .safe
                     if let analysis, let box = inputBox, !analysis.findings.isEmpty {

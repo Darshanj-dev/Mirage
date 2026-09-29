@@ -84,7 +84,7 @@ final class OverlayPresenter {
 
     private func show(_ live: LiveMarks?) {
         current = live
-        watchPointer(!(live?.marks.isEmpty ?? true))
+        watchPointer(false) // no hover scanning
         guard let live else {
             marksPanel?.orderOut(nil)
             badgePanel?.orderOut(nil)
@@ -97,7 +97,7 @@ final class OverlayPresenter {
         marksPanel = marks
         marks.setFrame(cocoaArea, display: true)
         marks.contentView = NSHostingView(rootView: UnderlineView(live: live, origin: area.origin))
-        if live.marks.isEmpty { marks.orderOut(nil) } else { marks.orderFrontRegardless() }
+        marks.orderOut(nil) // no lines are drawn (by request); the marks only drive the hover tips
 
         // Badge: just above the top-right corner of the box, where the extension puts its shield.
         let size = CGSize(width: live.count > 0 ? 178 : 34, height: 30)
