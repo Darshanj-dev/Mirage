@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MIRAGE Demo Inputs</title>
+<style>
+  @page { size: A4; margin: 13mm; }
+  body { font: 10pt/1.4 -apple-system, "Helvetica Neue", Arial, sans-serif; color: #0f172a; margin: 0; }
+  h1 { font-size: 19pt; margin: 0 0 2px; }
+  .sub { color: #475569; margin: 0 0 8px; }
+  h2 { font-size: 12.5pt; margin: 14px 0 6px; padding: 5px 9px; color: #fff; background: #0f172a; border-radius: 6px; break-after: avoid; }
+  .item { margin: 7px 0; break-inside: avoid; }
+  .head { display: flex; justify-content: space-between; gap: 10px; font-weight: 700; font-size: 9.6pt; }
+  .exp { font-weight: 600; color: #475569; font-size: 8.8pt; text-align: right; }
+  pre { margin: 3px 0 0; padding: 7px 9px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; font: 9.4pt/1.45 "SF Mono", Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
+  .note { font-size: 8.8pt; color: #475569; margin-top: 2px; }
+  .warn { font-size: 9pt; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 5px 9px; }
+</style>
+</head>
+<body>
+<h1>MIRAGE · Demo inputs to copy and paste</h1>
+<p class="sub">Browser extension · Desktop companion · CLI. All data is made up. Scores checked with MIRAGE's detector.</p>
+<p class="warn">Tip: copying from a PDF can add line breaks where the text wraps. That's fine in ChatGPT (pasting never sends). For CLI commands, type them or copy one line at a time.</p>
+
+<h2>1 · Browser extension (chatgpt.com)</h2>
+
+<div class="item"><div class="head"><span>A1 · Clean prompt</span><span class="exp">No popup · 0/100</span></div>
+<pre>Explain how UPI payments work in three simple lines.</pre></div>
+
+<div class="item"><div class="head"><span>A2 · Personal details ★</span><span class="exp">Critical 100/100 · 5 hidden</span></div>
+<pre>Hi, I'm Priya Nair. My PAN is BNZPM2501K, Aadhaar 2341 2341 2346, phone 98450 12345 and email priya.nair@gmail.com. Write a short letter to my bank asking them to update my KYC.</pre></div>
+
+<div class="item"><div class="head"><span>A3 · Secrets</span><span class="exp">Critical 100/100 · key + password removed</span></div>
+<pre>My deploy keeps failing. Config: AWS_ACCESS_KEY_ID=AKIAQ7Z3MIRAGEDEMO42 and db password=S3cr3tPass@2026. What is wrong?</pre></div>
+
+<div class="item"><div class="head"><span>A4 · Health</span><span class="exp">High 52/100 · name + DOB hidden, health kept</span></div>
+<pre>My name is Arjun Menon, DOB 14/03/2002. My HbA1c is 7.9 and I take metformin. What diet should I follow?</pre></div>
+
+<div class="item"><div class="head"><span>A5 · Card + OTP</span><span class="exp">Critical 99/100 · card + OTP removed</span></div>
+<pre>Why was my payment declined? Card 4111 1111 1111 1111, expiry 12/28, OTP 482913.</pre></div>
+
+<div class="item"><div class="head"><span>A5 · Disguised</span><span class="exp">Email + phone hidden</span></div>
+<pre>Email me at priya.nair [at] gmail [dot] com and call +91-98450-12345.</pre></div>
+
+<div class="item"><div class="head"><span>A6 · Private Compose</span><span class="exp">Toolbar shield → Private Compose → paste A2 → Insert protected</span></div></div>
+
+<h2>2 · Desktop companion (ChatGPT Mac app)</h2>
+
+<div class="item"><div class="head"><span>B2 · Popup while typing ★</span><span class="exp">High 55/100 · 4 hidden</span></div>
+<pre>I'm Rahul Sharma. My PAN is PQRSX6789K and my UPI is rahul.sharma@okhdfcbank. Draft an email to HDFC support, IFSC HDFC0001234, asking why my refund is late.</pre>
+<p class="note">Popup opens by itself ~0.15 s after you stop typing. Press Enter → nothing sends. Click Protect &amp; Send.</p></div>
+
+<div class="item"><div class="head"><span>B3 · Secret in code</span><span class="exp">Critical 71/100 · key removed</span></div>
+<pre>Fix this code: const key = "sk-proj-Xy7Qm2Lp9Rt4Vb8Nc3Kd6Hf1Js5Gw0Ez"; fetch(url, { headers: { Authorization: key } })</pre></div>
+
+<div class="item"><div class="head"><span>B4 · Cancel</span><span class="exp">Paste A2 → popup → Cancel → text untouched</span></div></div>
+
+<div class="item"><div class="head"><span>B5 · Private Compose</span><span class="exp">Press ⌥⌘M → paste B2 → Insert protected</span></div></div>
+
+<h2>3 · CLI (terminal)</h2>
+
+<div class="item"><div class="head"><span>Setup (before the demo)</span><span class="exp">once</span></div>
+<pre>npm install -g https://github.com/NinadPandith/Mirage-Cli/raw/main/release/nexora-mirage-cli-0.1.8.tgz</pre>
+<pre>mirage maps clear --yes</pre>
+<pre>mirage demo</pre>
+<pre>cd mirage-demo</pre></div>
+
+<div class="item"><div class="head"><span>C1 · Show the log</span><span class="exp">key, email, Aadhaar, phone</span></div>
+<pre>cat error.log</pre>
+<p class="note">Windows: <b>type error.log</b></p></div>
+
+<div class="item"><div class="head"><span>C2 · Stops the secret</span><span class="exp">"Nothing was written."</span></div>
+<pre>mirage mask error.log</pre></div>
+
+<div class="item"><div class="head"><span>C3 · Hide the rest</span><span class="exp">1 secret removed · 3 hidden</span></div>
+<pre>mirage mask error.log --strip-secrets</pre></div>
+
+<div class="item"><div class="head"><span>C4 · Real details back</span><span class="exp">3 placeholders restored</span></div>
+<pre>mirage unmask reply.txt</pre></div>
+
+<div class="item"><div class="head"><span>C5 · Scan folder</span><span class="exp">3 to hide · 1 secret</span></div>
+<pre>mirage scan .</pre></div>
+
+<div class="item"><div class="head"><span>C6 · Chat with Claude (needs internet)</span><span class="exp">Claude sees «PAN_1»</span></div>
+<pre>mirage chat claude</pre>
+<pre>My PAN is PQRSX6789K. Write one line confirming my PAN.</pre>
+<pre>my password is Hunter@123</pre>
+<pre>/exit</pre></div>
+
+<div class="item"><div class="head"><span>C6 · Proof (Mac / Linux)</span><span class="exp">first = 0, second ≥ 1</span></div>
+<pre>grep -r "PQRSX6789K" ~/.claude/projects/*mirage-demo* | wc -l</pre>
+<pre>grep -r "PAN_1" ~/.claude/projects/*mirage-demo* | wc -l</pre></div>
+
+<div class="item"><div class="head"><span>C6 · Proof (Windows PowerShell)</span><span class="exp">0</span></div>
+<pre>(Select-String -Path "$HOME\.claude\projects\*mirage-demo*\*.jsonl" -Pattern "PQRSX6789K" -SimpleMatch).Count</pre></div>
+
+</body>
+</html>
