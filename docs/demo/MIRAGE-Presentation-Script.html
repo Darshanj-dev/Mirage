@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MIRAGE Presentation Script</title>
+<style>
+  @page { size: A4; margin: 14mm; }
+  :root { --ink:#0f172a; --muted:#475569; --line:#e2e8f0; --sunk:#f8fafc; --blue:#2563eb; --green:#15803d; --amber:#b45309; }
+  body { font: 10.3pt/1.5 -apple-system, "Helvetica Neue", Arial, sans-serif; color: var(--ink); margin: 0; }
+  h1 { font-size: 21pt; margin: 0; }
+  .sub { color: var(--muted); margin: 2px 0 10px; }
+  h2 { font-size: 12.5pt; margin: 16px 0 4px; padding: 5px 10px; background: var(--ink); color: #fff; border-radius: 6px; display: flex; justify-content: space-between; break-after: avoid; }
+  h2 span { font-weight: 500; opacity: 0.8; font-size: 10pt; }
+  .who { font-size: 8.4pt; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--blue); margin: 8px 0 2px; }
+  .say { font-size: 10.8pt; margin: 2px 0 6px; padding-left: 10px; border-left: 3px solid var(--blue); break-inside: avoid; }
+  .do { font-size: 9.3pt; color: var(--muted); background: var(--sunk); border: 1px dashed #cbd5e1; border-radius: 6px; padding: 5px 9px; margin: 4px 0 6px; break-inside: avoid; }
+  .do b { color: var(--ink); }
+  .crit { display: inline-block; font-size: 8pt; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: #dcfce7; color: var(--green); margin-left: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 9.3pt; margin: 6px 0; }
+  th, td { border: 1px solid var(--line); padding: 5px 7px; text-align: left; vertical-align: top; }
+  th { background: var(--sunk); font-size: 8.2pt; text-transform: uppercase; color: var(--muted); }
+  tr { break-inside: avoid; }
+  ul { margin: 4px 0; padding-left: 18px; } li { margin: 2px 0; }
+  .tip { border-left: 4px solid var(--amber); background: #fffbeb; padding: 6px 10px; border-radius: 0 6px 6px 0; margin: 8px 0; break-inside: avoid; }
+  .page { break-before: page; }
+</style>
+</head>
+<body>
+
+<h1>MIRAGE · Presentation Script</h1>
+<p class="sub">What to say, how to say it, and what to show. About 10 minutes + Q&amp;A. Replace [Name] with your team members.</p>
+
+<table>
+  <tr><th>Time</th><th>Section</th><th>Speaker</th><th>Scores for</th></tr>
+  <tr><td>0:00–1:00</td><td>1. The problem (hook)</td><td>Darshan</td><td>Social impact</td></tr>
+  <tr><td>1:00–2:00</td><td>2. What MIRAGE is</td><td>Darshan</td><td>Innovation</td></tr>
+  <tr><td>2:00–4:30</td><td>3. Demo: browser extension</td><td>Darshan</td><td>Implementation</td></tr>
+  <tr><td>4:30–6:30</td><td>4. Demo: desktop companion</td><td>Darshan</td><td>Implementation, innovation</td></tr>
+  <tr><td>6:30–8:30</td><td>5. Demo: CLI</td><td>Ninad</td><td>Implementation, teamwork</td></tr>
+  <tr><td>8:30–9:30</td><td>6. How it works + what's new</td><td>[Name]</td><td>Innovation</td></tr>
+  <tr><td>9:30–10:00</td><td>7. Impact, team, close</td><td>Darshan</td><td>Social impact, teamwork</td></tr>
+</table>
+
+<div class="tip"><b>How to deliver:</b> start with the problem, not the tech. Talk to the judges, not the screen. After every demo step, say <b>one sentence about what just happened</b> ("ChatGPT never saw the PAN"). Slow down on the ★ moments. If something fails, say "let me show it another way" and move to the backup. Never pretend.</div>
+
+<h2>1 · The problem <span>0:00–1:00 · Darshan</span></h2>
+<div class="who">Say</div>
+<div class="say">"Show of hands: who has pasted something personal into ChatGPT? A bank letter, a resume, a screenshot of an error?</div>
+<div class="say">Millions of Indians now use ChatGPT for bank letters, KYC emails and job applications, and they paste their <b>Aadhaar, PAN and phone number</b> straight in. Developers paste logs and code with <b>API keys and passwords</b>. In 2023, Samsung engineers leaked internal source code this way, and Samsung had to ban these tools.</div>
+<div class="say">Once you press Send, that data is on someone else's server. You can't take it back. And India's new <b>Digital Personal Data Protection Act, 2023</b> makes protecting personal data a legal duty. People need AI, but they need it <b>safely</b>."</div>
+<div class="do"><b>Show:</b> title slide. <b>How:</b> pause after the question; let them think. Serious tone.</div>
+
+<h2>2 · What MIRAGE is <span>1:00–2:00 · Darshan</span></h2>
+<div class="say">"MIRAGE is a <b>privacy firewall for AI</b>. It sits between you and the AI and checks every prompt <b>before</b> it is sent, on your own device.</div>
+<div class="say">Personal details like Aadhaar and PAN become <b>placeholders</b>, so the AI can still answer. Secrets like API keys and passwords are <b>removed completely</b>. And when the answer comes back, MIRAGE <b>puts your real details back</b>, only on your screen.</div>
+<div class="say">Most tools just block you. MIRAGE lets you keep using AI and keeps your data out of it. We built it three ways, because people use AI in three places: the <b>browser</b>, the <b>ChatGPT and Claude desktop apps</b>, and the <b>terminal</b>."</div>
+<div class="do"><b>Show:</b> the flow slide: <i>"Aadhaar · PAN · API key → MIRAGE (on your device) → «AADHAAR_1» «PAN_1» «API_KEY_REMOVED» → AI"</i>.</div>
+
+<h2>3 · Demo: browser extension <span>2:00–4:30 · Darshan</span></h2>
+<div class="do"><b>Do:</b> chatgpt.com, new chat. Paste <b>A1</b> (clean prompt) → it sends normally.</div>
+<div class="say">"First, a normal question. Nothing sensitive, so MIRAGE stays out of the way. No false alarms."</div>
+<div class="do"><b>Do ★:</b> paste <b>A2</b> (Priya: PAN, Aadhaar, phone, email) → press Enter → the review opens. Click <b>Review</b>, then <b>Protect &amp; send</b>.</div>
+<div class="say">"Now Priya asks for a bank letter with her PAN, Aadhaar, phone and email. I press Enter, and MIRAGE <b>stops it</b>. It found 5 items, the risk is <b>100 out of 100</b>, and it tells me exactly why: every point is explained. Nothing has been sent yet.</div>
+<div class="say">I click Protect &amp; send. Look at what ChatGPT received: <b>«PAN_1», «AADHAAR_1»</b>. ChatGPT never saw the real numbers. But it can still write the letter. And when I hover over a placeholder in the reply, the real value appears, <b>only on this laptop</b>."</div>
+<div class="do"><b>Do:</b> paste <b>A3</b> (AWS key + password) → Protect &amp; send.</div>
+<div class="say">"Secrets are different. An API key isn't hidden, it's <b>removed</b>, never stored, never put back. One leaked cloud key can cost a company lakhs."</div>
+<div class="do"><b>Optional (if time):</b> A4 health: "The medical detail stays so the answer is useful, but the name and date of birth are hidden."</div>
+
+<h2>4 · Demo: desktop companion <span>4:30–6:30 · Darshan</span></h2>
+<div class="say">"But many people don't use the website. They use the <b>ChatGPT desktop app</b>. A browser extension can't see inside that app, so we built a <b>native desktop companion</b>."</div>
+<div class="do"><b>Show:</b> the menu bar shield and the green <b>"MIRAGE active"</b> badge above ChatGPT's message box.</div>
+<div class="say">"This badge shows MIRAGE is protecting this box. It reads only the message box of ChatGPT and Claude, through the same accessibility system screen readers use. <b>No keylogger, no screen recording.</b>"</div>
+<div class="do"><b>Do ★:</b> type <b>B2</b> (Rahul: PAN, UPI, IFSC) and stop typing → the popup opens by itself. Press <b>Enter</b> → nothing happens. Click <b>Protect &amp; Send</b>.</div>
+<div class="say">"As soon as I stop typing, the review opens, in about <b>0.15 seconds</b>. Watch: I press Enter, and <b>nothing is sent</b>. MIRAGE is holding the message. I choose Protect &amp; Send, and the chat shows only placeholders."</div>
+<div class="do"><b>Optional:</b> B3 (API key in code) → "Secret · won't be sent". Mention Windows: "We also have a Windows version in beta, installed with one click."</div>
+
+<h2>5 · Demo: CLI <span>6:30–8:30 · Ninad</span></h2>
+<div class="say">"I built the developer side. Developers paste <b>logs and code</b> into AI all day, and logs are full of secrets and customer data."</div>
+<div class="do"><b>Do:</b> <code>cat error.log</code> → <code>mirage mask error.log</code> (stops) → <code>mirage mask error.log --strip-secrets</code> → <code>mirage unmask reply.txt</code>.</div>
+<div class="say">"Here's a real-looking server log: an API key, a customer email, an Aadhaar number, a phone number. First, MIRAGE <b>refuses</b> because there's a secret. With strip-secrets it removes the key and hides the rest: this is safe to paste into any AI. When the AI answers, <b>unmask</b> puts the real details back."</div>
+<div class="do"><b>Do (if Wi-Fi is good):</b> <code>mirage chat claude</code> → "My PAN is PQRSX6789K…" → point at the <b>sent ›</b> line, then the real PAN in the answer.</div>
+<div class="say">"And we can <b>prove</b> it: this is Claude's own saved history on this laptop. The real PAN appears <b>zero</b> times. Claude only ever saw «PAN_1». And it's the <b>same detection engine</b> as the browser and desktop apps."</div>
+
+<h2>6 · How it works and what's new <span>8:30–9:30 · [Name]</span></h2>
+<div class="say">"Under the hood, it's <b>one detection engine</b> written in TypeScript, and the same engine runs in all three products.</div>
+<div class="say">It doesn't just match patterns. It <b>verifies</b> them: Aadhaar with the <b>Verhoeff checksum</b>, card numbers with <b>Luhn</b>, PAN with its format rules, so random numbers don't cause false alarms. It measures <b>entropy</b> to spot random-looking API keys, and it reads <b>context</b>: words like 'DOB' or 'my name is'. It even catches tricks like 'gmail [dot] com' or hidden characters.</div>
+<div class="say">Then it gives a <b>risk score from 0 to 100</b> and explains every point. On our test set of 181 prompts, precision is 1.0 and recall 0.996, in 0.05 milliseconds per prompt. We wrote that test set ourselves, so an independent test is our next step.</div>
+<div class="say">What's new: <b>India-first detection</b> with real checksums, <b>reversible placeholders</b> so the AI still answers, and <b>interception inside native desktop apps</b>, not just websites. And there's <b>no server</b>: real values are encrypted on your device and deleted after 24 hours."</div>
+<div class="do"><b>Show:</b> the tech stack slide: one engine → Extension (WXT + React) · Desktop (Swift / .NET) · CLI (Node.js).</div>
+
+<h2>7 · Impact, team, close <span>9:30–10:00 · Darshan</span></h2>
+<div class="say">"Who is this for? <b>Students</b> writing applications, <b>employees</b> using AI at work, <b>small businesses</b> handling customer data, and <b>developers</b>. Anyone who uses AI and has something to protect.</div>
+<div class="say">We're a team of [N]: I built the browser extension and the desktop companion, Ninad built the CLI, [Name] did [part]. We worked on <b>one shared engine</b>, so every improvement reaches all three products at once.</div>
+<div class="say">MIRAGE: <b>use AI without giving away who you are.</b> Thank you. We're happy to take questions."</div>
+<div class="do"><b>Show:</b> final slide with the GitHub links and a QR code for github.com/Darshanj-dev/Mirage. Smile, stop talking, wait.</div>
+
+<h2>Q&amp;A · short, honest answers <span>Anyone</span></h2>
+<table>
+  <tr><th style="width:30%">If they ask</th><th>Say</th></tr>
+  <tr><td>Does data go to your server?</td><td>"No. There's no MIRAGE server. Detection runs on the device; only the protected prompt goes to the AI."</td></tr>
+  <tr><td>Why not use an AI model to detect?</td><td>"Speed and privacy: rules with checksums run in 0.05 ms, offline, and every result is explainable. A model would need a server or a big download."</td></tr>
+  <tr><td>What does it miss?</td><td>"Names only with context like 'my name is'; a PAN split with spaces; non-English text. That's why the review shows exactly what will be hidden, so the user stays in control."</td></tr>
+  <tr><td>Isn't the desktop app a keylogger?</td><td>"No. It only reads ChatGPT's and Claude's message box while they're open, only reacts to Enter and the Send button, never records the screen and never logs text."</td></tr>
+  <tr><td>How is it different from existing tools?</td><td>"Enterprise tools block and report to admins. MIRAGE is for individuals: it hides details so the AI still works, restores them in the reply, and understands Indian IDs with real checksums."</td></tr>
+  <tr><td>Business model / next steps?</td><td>"Free for individuals. Next: a blind accuracy test, the Chrome Web Store, testing the Windows app with ChatGPT, and a team version for companies under the DPDP Act."</td></tr>
+  <tr><td>Is Windows ready?</td><td>"It's a beta: built and tested automatically on Windows, but we haven't tried it with the ChatGPT app on Windows yet."</td></tr>
+</table>
+
+<div class="tip"><b>Before you go on:</b> rehearse the whole script twice with a timer. Every speaker knows the ★ moments. Inputs to copy are in <b>MIRAGE-Demo-Inputs.pdf</b>; the step-by-step demo with backups is in <b>MIRAGE-Demo-Script.pdf</b>.</div>
+
+</body>
+</html>
